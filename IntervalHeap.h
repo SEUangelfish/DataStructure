@@ -11,6 +11,7 @@ namespace dsl {
 	// _Ty			元素类型
 	// LessTag		比较器标志(若采用大于比较器则置false)
 	// _Cmpr		比较器(默认采用小于比较器)
+	// _Alloc		内存分配器类型
 	template<typename _Ty, bool LessTag = true, typename _Cmpr = std::less<_Ty>, typename _Alloc = Allocater<_Ty>>
 	class IntervalHeap {
 	protected:
@@ -123,7 +124,7 @@ namespace dsl {
 		// 浅拷贝(小心使用，注意析构问题)
 		IntervalHeap(const IntervalHeap& cp, bool ShallowCopy) :src(cp.src), size(cp.size), capacity(cp.capacity) {}
 		// 拷贝构造(深拷贝)
-		IntervalHeap(const IntervalHeap& cp) : src(_Alloc::New(cp.capacity)), size(cp.size), capacity(cp.capacity) {
+		IntervalHeap(const IntervalHeap& cp) : src(_Alloc().New(cp.capacity)), size(cp.size), capacity(cp.capacity) {
 			if (!this->src) return;
 			// 数据拷贝
 			Memcpy<_Ty>(cp.src, cp.size, this->src, this->capacity);
@@ -138,7 +139,7 @@ namespace dsl {
 		// 第一个参数传源数据地址
 		// 第二个参数传元素个数
 		template<typename T>
-		IntervalHeap(T* _src, size_t cnt) :src(_Alloc::New(cnt)), size(cnt), capacity(cnt) {
+		IntervalHeap(T* _src, size_t cnt) :src(_Alloc().New(cnt)), size(cnt), capacity(cnt) {
 			if (!this->src) return;
 
 			// 数据拷贝
@@ -167,7 +168,7 @@ namespace dsl {
 			// 申请新资源
 			this->size = cp.size;
 			this->capacity = cp.capacity;
-			this->src = _Alloc::New(cp.capacity);
+			this->src = _Alloc().New(cp.capacity);
 			if (!src) return *this;
 
 			// 数据拷贝
@@ -187,8 +188,7 @@ namespace dsl {
 
 		// 析构函数
 		~IntervalHeap() {
-			Allocater<_Ty> alloc;
-			alloc.Free(this->src, this->size);
+			_Alloc().Free(this->src, this->size);
 			this->src = nullptr;
 			this->size = 0;
 			this->capacity = 0;
@@ -284,7 +284,7 @@ namespace dsl {
 		// 返回-1	元素被截断
 		int Reserve(size_t cap) {
 			// 申请资源
-			void* buf = _Alloc::New(cap);
+			void* buf = _Alloc().New(cap);
 
 			// 拷贝源数据
 			if (this->src) {
