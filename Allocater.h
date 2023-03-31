@@ -10,7 +10,7 @@ namespace dsl {
 		// 申请失败报异常但不进行初始化操作
 		// cnt:		元素个数
 		// 返回资源指针
-		inline static void* New(size_t cnt) {
+		virtual inline void* New(size_t cnt) {
 			if (!cnt) return nullptr;
 			void* p = malloc(sizeof(_Ty) * cnt);
 			if (!p) throw std::bad_alloc();
@@ -18,7 +18,7 @@ namespace dsl {
 		}
 
 		// 释放资源
-		inline static void Free(void* src, size_t size) {
+		virtual inline void Free(void* src, size_t size) {
 			if (src) {
 				_Ty* p = (_Ty*)src;
 				if (std::is_class_v<_Ty>) {
@@ -33,7 +33,6 @@ namespace dsl {
 #endif // MULTITHREADING_OPTIMIZATION
 						for (size_t i = 0; i < size; i++) p[i].~_Ty();
 				}
-
 				free(src);
 			}
 		}
