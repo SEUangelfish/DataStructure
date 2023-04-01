@@ -22,16 +22,7 @@ namespace dsl {
 			_Ty* p = (_Ty*)src;
 			_Ty* q = (_Ty*)dst;
 			size_t n = std::min(cnt, cap);
-#ifdef MULTITHREADING_OPTIMIZATION
-			if (n > BIG) {
-				// 多线程优化
-				std::thread t([p, q, n] { for (size_t i = 0; i < n >> 1; i++) new(&q[i]) _Ty(p[i]); });
-				for (size_t i = n >> 1; i < n; i++) new(&q[i]) _Ty(p[i]);
-				t.join();
-			}
-			else
-#endif // MULTITHREADING_OPTIMIZATION
-				for (size_t i = 0; i < n; i++) new(&q[i]) _Ty(p[i]);
+			for (size_t i = 0; i < n; i++) new(&q[i]) _Ty(p[i]);
 		}
 		else memcpy_s(dst, sizeof(_Ty) * cap, src, sizeof(_Ty) * cnt);
 	}
