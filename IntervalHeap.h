@@ -36,7 +36,9 @@ namespace dsl {
 		void Expand() {
 			// 分配资源
 			size_t cap = this->capacity ? this->capacity << 1 : 2;
+#ifdef EXCEPTION_DETECTION
 			if (cap <= 0) throw std::exception("fail to expand");
+#endif // EXCEPTION_DETECTION
 			this->Reserve(cap);
 		}
 
@@ -234,7 +236,9 @@ namespace dsl {
 
 		// 删除最大值
 		void PopMax() {
+#ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("none element");
+#endif // EXCEPTION_DETECTION
 			if (this->size == 1) this->Del(1);
 			else if (this->size == 2) this->Del(2);
 			else {
@@ -247,7 +251,9 @@ namespace dsl {
 
 		// 删除最小值
 		void PopMin() {
+#ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("none element");
+#endif // EXCEPTION_DETECTION
 			if (this->size == 1) this->Del(1);
 			else {
 				_Ty* p = (_Ty*)this->src;
@@ -259,13 +265,17 @@ namespace dsl {
 
 		// 返回最大值
 		_Ty Max()const {
+#ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("none element");
+#endif // EXCEPTION_DETECTION
 			_Ty* p = (_Ty*)this->src;
 			return this->size == 1 ? p[0] : p[1];
 		}
 		// 返回最小值
 		_Ty Min()const {
+#ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("none element");
+#endif // EXCEPTION_DETECTION
 			return ((_Ty*)this->src)[0];
 		}
 
