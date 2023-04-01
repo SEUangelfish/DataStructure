@@ -21,18 +21,7 @@ namespace dsl {
 		virtual inline void Free(void* src, size_t size) {
 			if (src) {
 				_Ty* p = (_Ty*)src;
-				if (std::is_class_v<_Ty>) {
-#ifdef MULTITHREADING_OPTIMIZATION
-					if (size > BIG) {
-						// 多线程优化
-						std::thread t([p](size_t n) { for (size_t i = 0; i < n >> 1; i++) p[i].~_Ty(); }, size);
-						for (size_t i = size >> 1; i < size; i++) p[i].~_Ty();
-						t.join();
-					}
-					else
-#endif // MULTITHREADING_OPTIMIZATION
-						for (size_t i = 0; i < size; i++) p[i].~_Ty();
-				}
+				if (std::is_class_v<_Ty>) for (size_t i = 0; i < size; i++) p[i].~_Ty();
 				free(src);
 			}
 		}
