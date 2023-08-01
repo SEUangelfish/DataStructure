@@ -26,20 +26,18 @@ namespace dsl {
 		};
 
 		// 删除某一元素
-		// off:		第几个元素(从1开始)
-		inline void Del(size_t off) {
-			if (std::is_class_v<_Ty>) ((_Ty*)this->src)[off - 1].~_Ty();
+		// offset:		第几个元素(从1开始)
+		inline void Erase(size_t offset) {
+#ifdef EXCEPTION_DETECTION
+			if (offset < 1 || offset > this->size) throw std::exception("invalid offset by erase");
+#endif
+			if (std::is_class_v<_Ty>) this->src[offset - 1].~_Ty();
 			--this->size;
 		}
 
-		// 扩容函数(每次扩容2倍)
-		void Expand() {
-			// 分配资源
-			size_t cap = this->capacity ? this->capacity << 1 : 2;
-#ifdef EXCEPTION_DETECTION
-			if (cap <= 0) throw std::exception("fail to expand");
-#endif // EXCEPTION_DETECTION
-			this->Reserve(cap);
+		// 扩容函数(默认扩容2倍)
+		void Expand(int times = 2) {
+			this->Reserve(this->capacity ? this->capacity * times : times);
 		}
 
 		// 向下堆化
@@ -60,15 +58,15 @@ namespace dsl {
 				cnt = (this->size >> 1) + this->size % 2;
 				// 结点内部调整
 				// 如果元素个数为奇数则尾结点不用调整
-				if ((x < cnt - 1 || this->size % 2 == 0) && cpr(p[x].R, p[x].L)) Swap(&p[x].L, &p[x].R, sizeof(_Ty));
+				if ((x < cnt - 1 || this->size % 2 == 0) && cpr(p[x].R, p[x].L)) Swap(p[x].L, p[x].R);
 				while (true) {
 					if (l >= cnt) return;
 					tar = r >= cnt || cpr(p[l].L, p[r].L) ? l : r;
 					if (cpr(p[x].L, p[tar].L)) return;
-					Swap(&p[tar].L, &p[x].L, sizeof(_Ty));
+					Swap(p[tar].L, p[x].L);
 					x = tar;
 					// 结点内部调整
-					if ((x < cnt - 1 || this->size % 2 == 0) && cpr(p[x].R, p[x].L)) Swap(&p[x].L, &p[x].R, sizeof(_Ty));
+					if ((x < cnt - 1 || this->size % 2 == 0) && cpr(p[x].R, p[x].L)) Swap(p[x].L, p[x].R);
 					l = (x << 1) + 1, r = l + 1;
 				}
 			}
@@ -77,15 +75,15 @@ namespace dsl {
 				// 如果元素个数为奇数则最后一个结点不用处理
 				cnt = this->size >> 1;
 				// 结点内部调整
-				if (cpr(p[x].R, p[x].L)) Swap(&p[x].L, &p[x].R, sizeof(_Ty));
+				if (cpr(p[x].R, p[x].L)) Swap(p[x].L, p[x].R);
 				while (true) {
 					if (l >= cnt) return;
 					tar = r >= cnt || cpr(p[r].R, p[l].R) ? l : r;
 					if (cpr(p[tar].R, p[x].R)) return;
-					Swap(&p[x].R, &p[tar].R, sizeof(_Ty));
+					Swap(p[x].R, p[tar].R);
 					x = tar;
 					// 结点内部调整
-					if (cpr(p[x].R, p[x].L)) Swap(&p[x].L, &p[x].R, sizeof(_Ty));
+					if (cpr(p[x].R, p[x].L)) Swap(p[x].L, p[x].R);
 					l = (x << 1) + 1, r = l + 1;
 				}
 			}
@@ -102,7 +100,7 @@ namespace dsl {
 				// 小堆调整
 				if (minHeap) {
 					if (cpr(p[x].L, p[fa].L)) {
-						Swap(&p[x].L, &p[fa].L, sizeof(_Ty));
+						Swap(p[x].L, p[fa].L);
 						x = fa;
 					}
 					else return;
@@ -110,7 +108,7 @@ namespace dsl {
 				// 大堆调整
 				else {
 					if (cpr(p[fa].R, p[x].R)) {
-						Swap(&p[fa].R, &p[x].R, sizeof(_Ty));
+						Swap(p[fa].R, p[x].R);
 						x = fa;
 					}
 					else return;
@@ -124,12 +122,11 @@ namespace dsl {
 		// 默认构造
 		IntervalHeap() :src(nullptr), size(0), capacity(0) {}
 		// 浅拷贝(小心使用，注意析构问题)
-		IntervalHeap(const IntervalHeap& cp, bool ShallowCopy) :src(cp.src), size(cp.size), capacity(cp.capacity) {}
+		IntervalHeap(const IntervalHeap& cp, bool Shallowcopy) :src(cp.src), size(cp.size), capacity(cp.capacity) {}
 		// 拷贝构造(深拷贝)
 		IntervalHeap(const IntervalHeap& cp) : src(_Alloc().New(cp.capacity)), size(cp.size), capacity(cp.capacity) {
-			if (!this->src) return;
 			// 数据拷贝
-			Memcpy<_Ty>(cp.src, cp.size, this->src, this->capacity);
+			std::copy_n(cp.src, cp.size, this->src);
 		}
 		// 移动构造
 		IntervalHeap(IntervalHeap&& mv) noexcept :src(mv.src), size(mv.size), capacity(mv.capacity) {
@@ -140,45 +137,67 @@ namespace dsl {
 		// 批构造
 		// 第一个参数传源数据地址
 		// 第二个参数传元素个数
-		template<typename T>
-		IntervalHeap(T* _src, size_t cnt) :src(_Alloc().New(cnt)), size(cnt), capacity(cnt) {
-			if (!this->src) return;
-
+		IntervalHeap(_Ty* _src, size_t cnt) :src(_Alloc().New(cnt)), size(cnt % 2 ? cnt - 1 : cnt), capacity(cnt) {
 			// 数据拷贝
-			Memcpy<_Ty>(_src, cnt, this->src, this->capacity);
+			std::copy_n(_src, this->size, this->src);
 
 			// 堆化
-			std::pair<T, T>* p = (std::pair<T, T>*)this->src;
-			cnt = (cnt >> 1) - 1;
-			if (cnt < 0) return;
-			while (1) {
-				this->HeapDown(cnt, false);
-				this->HeapDown(cnt, true);
-				if (!cnt) return;
-				--cnt;
+			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*)this->src;
+			size_t i = cnt >> 1;
+			if (i) for (--i; ; --i) {
+				this->HeapDown(i, false);
+				this->HeapDown(i, true);
+				if (!i) break;
 			}
+			if (cnt % 2) this->Push(_src[cnt - 1]);
 		}
+		// 批构造
+		// 第一个参数传首元素地址
+		// 第二个参数传尾元素地址
+		template<typename _Init>
+		IntervalHeap(_Init st, _Init ed) :src(_Alloc().New(ed - st)), capacity(ed - st) {
+			size_t cnt = ed - st;
+			this->size = cnt % 2 ? cnt - 1 : cnt;
+			// 数据拷贝
+			std::copy(st, cnt % 2 ? --ed : ed, src);
+
+			// 堆化
+			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*)this->src;
+			size_t i = cnt >> 1;
+			if (i) for (--i; ; --i) {
+				this->HeapDown(i, false);
+				this->HeapDown(i, true);
+				if (!i) break;
+			}
+			if (cnt % 2) this->Push(*ed);
+		}
+
+
 		// 列表初始化
-		template<typename T>
-		IntervalHeap(const std::initializer_list<T>& lst) :IntervalHeap<T>(lst.begin(), lst.size()) {}
+		IntervalHeap(const std::initializer_list<_Ty>& lst) :IntervalHeap(lst.begin(), lst.size()) {}
 
 		// 赋值(深拷贝)
 		IntervalHeap& operator= (const IntervalHeap& cp) {
-			// 释放旧资源
-			this->Free();
+			// 析构旧元素
+			this->Clear();
 
-			// 申请新资源
+			// 容量不足则直接扩容为cp的容量
+			if (this->capacity < cp.capacity) {
+				this->capacity = cp.capacity;
+				_Alloc().Free(this->src, this->size);
+				this->src = _Alloc().New(cp.capacity);
+			}
 			this->size = cp.size;
-			this->capacity = cp.capacity;
-			this->src = _Alloc().New(cp.capacity);
-			if (!src) return *this;
 
 			// 数据拷贝
-			Memcpy<_Ty>(cp.src, cp.size, this->src, this->capacity);
+			Memcpy(cp.src, cp.size, this->src, this->capacity);
 			return *this;
 		}
 		// 赋值(移动赋值)
 		IntervalHeap& operator= (IntervalHeap&& mv) noexcept {
+			// 析构旧资源
+			_Alloc().Free(this->src, this->size);
+
 			this->src = mv.src;
 			this->size = mv.size;
 			this->capacity = mv.capacity;
@@ -204,7 +223,7 @@ namespace dsl {
 			Cmpr cpr;
 			// 容量不足则扩容
 			if (this->size == this->capacity) this->Expand();
-			new((char*)this->src + sizeof(_Ty) * this->size) _Ty(args...);
+			new(this->src + this->size) _Ty(args...);
 			// 新元素所在结点下标
 			size_t x = this->size >> 1;
 
@@ -214,7 +233,7 @@ namespace dsl {
 			if (this->size % 2) {
 				_Ty* p = (_Ty*)this->src;
 				if (cpr(p[this->size], p[this->size - 1])) {
-					Swap(&p[this->size], &p[this->size - 1], sizeof(_Ty));
+					Swap(p[this->size], p[this->size - 1]);
 					this->HeapUp(x, true);
 				}
 				else this->HeapUp(x, false);
@@ -227,7 +246,7 @@ namespace dsl {
 				size_t fa = (x - 1) >> 1;
 				if (cpr(p[x].L, p[fa].L)) this->HeapUp(x, true);
 				else if (cpr(p[fa].R, p[x].L)) {
-					Swap(&p[fa].R, &p[x].L, sizeof(_Ty));
+					Swap(p[fa].R, p[x].L);
 					this->HeapUp(fa, false);
 				}
 			}
@@ -236,29 +255,35 @@ namespace dsl {
 
 		// 删除最大值
 		void PopMax() {
+			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-			if (!this->size) throw std::exception("none element");
+				throw std::exception("none element");
 #endif // EXCEPTION_DETECTION
-			if (this->size == 1) this->Del(1);
-			else if (this->size == 2) this->Del(2);
+				return;
+			}
+			if (this->size == 1) this->Erase(1);
+			else if (this->size == 2) this->Erase(2);
 			else {
 				_Ty* p = (_Ty*)this->src;
-				Swap(&p[1], &p[this->size - 1], sizeof(_Ty));
-				this->Del(this->size);
+				Swap(p[1], p[this->size - 1]);
+				this->Erase(this->size);
 				this->HeapDown(0, false);
 			}
 		}
 
 		// 删除最小值
 		void PopMin() {
+			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-			if (!this->size) throw std::exception("none element");
+				throw std::exception("none element");
 #endif // EXCEPTION_DETECTION
-			if (this->size == 1) this->Del(1);
+				return;
+			}
+			if (this->size == 1) this->Erase(1);
 			else {
 				_Ty* p = (_Ty*)this->src;
-				Swap(&p[0], &p[this->size - 1], sizeof(_Ty));
-				this->Del(this->size);
+				Swap(p[0], p[this->size - 1]);
+				this->Erase(this->size);
 				this->HeapDown(0, true);
 			}
 		}
@@ -294,14 +319,14 @@ namespace dsl {
 		// 返回-1	元素被截断
 		int Reserve(size_t cap) {
 			// 申请资源
-			void* buf = _Alloc().New(cap);
+			_Ty* buf = _Alloc().New(cap);
 
 			// 拷贝源数据
 			if (this->src) {
-				// 拷贝数据
-				memcpy_s(buf, cap * sizeof(_Ty), this->src, this->size * sizeof(_Ty));
+				// 拷贝数据(浅拷贝)
+				std::copy_n((char*)this->src, this->size * sizeof(_Ty), (char*)buf);
 				// 释放旧资源
-				free(this->src);
+				_Alloc().Free(this->src, 0);
 			}
 			this->src = buf;
 			this->capacity = cap;
@@ -318,12 +343,14 @@ namespace dsl {
 		}
 
 		// 清空元素，不释放资源
-		void Clear() { this->Free(); }
+		void Clear() {
+			for (size_t i = 1; i <= this->size; i++) this->Erase(i);
+		}
 
 	protected:
 		// 源数据地址
 		// 每个结点是一对数据，左小右大
-		void* src;
+		_Ty* src;
 		// 元素个数
 		size_t size;
 		// 容量大小
