@@ -30,14 +30,14 @@ namespace dsl {
 		inline void Erase(size_t offset) {
 #ifdef EXCEPTION_DETECTION
 			if (offset < 1 || offset > this->size) throw std::exception("invalid offset by erase");
-#endif
+#endif // EXCEPTION_DETECTION
 			if (std::is_class_v<_Ty>) this->src[offset - 1].~_Ty();
 			--this->size;
 		}
 
 		// 扩容函数(默认扩容2倍)
-		void Expand(int times = 2) {
-			this->Reserve(this->capacity ? this->capacity * times : times);
+		void Expand() {
+			this->Reserve(this->capacity ? this->capacity << 1 : 2);
 		}
 
 		// 向下堆化
@@ -59,8 +59,7 @@ namespace dsl {
 				// 结点内部调整
 				// 如果元素个数为奇数则尾结点不用调整
 				if ((x < cnt - 1 || this->size % 2 == 0) && cpr(p[x].R, p[x].L)) Swap(p[x].L, p[x].R);
-				while (true) {
-					if (l >= cnt) return;
+				while (l < cnt) {
 					tar = r >= cnt || cpr(p[l].L, p[r].L) ? l : r;
 					if (cpr(p[x].L, p[tar].L)) return;
 					Swap(p[tar].L, p[x].L);
@@ -76,8 +75,7 @@ namespace dsl {
 				cnt = this->size >> 1;
 				// 结点内部调整
 				if (cpr(p[x].R, p[x].L)) Swap(p[x].L, p[x].R);
-				while (true) {
-					if (l >= cnt) return;
+				while (l < cnt) {
 					tar = r >= cnt || cpr(p[r].R, p[l].R) ? l : r;
 					if (cpr(p[tar].R, p[x].R)) return;
 					Swap(p[x].R, p[tar].R);
@@ -96,25 +94,19 @@ namespace dsl {
 			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*) this->src;
 			// fa	父结点
 			size_t fa = (x - 1) >> 1;
-			while (x) {
-				// 小堆调整
-				if (minHeap) {
-					if (cpr(p[x].L, p[fa].L)) {
-						Swap(p[x].L, p[fa].L);
-						x = fa;
-					}
-					else return;
+			if (minHeap) {
+				while (x && cpr(p[x].L, p[fa].L)) {
+					Swap(p[x].L, p[fa].L);
+					x = fa;
+					fa = (x - 1) >> 1;
 				}
-				// 大堆调整
-				else {
-					if (cpr(p[fa].R, p[x].R)) {
-						Swap(p[fa].R, p[x].R);
-						x = fa;
-					}
-					else return;
+			}
+			else {
+				while (x && cpr(p[fa].R, p[x].R)) {
+					Swap(p[fa].R, p[x].R);
+					x = fa;
+					fa = (x - 1) >> 1;
 				}
-
-				fa = (x - 1) >> 1;
 			}
 		}
 
@@ -142,13 +134,14 @@ namespace dsl {
 			std::copy_n(_src, this->size, this->src);
 
 			// 堆化
-			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*)this->src;
-			size_t i = cnt >> 1;
-			if (i) for (--i; ; --i) {
-				this->HeapDown(i, false);
-				this->HeapDown(i, true);
-				if (!i) break;
+			size_t i = 0;
+			while (i < cnt >> 1) {
+				this->HeapUp(i, true);
+				this->HeapUp(i, false);
+				++i;
 			}
+
+			// 若有奇数个元素，则末尾元素在最后插入
 			if (cnt % 2) this->Push(_src[cnt - 1]);
 		}
 		// 批构造
@@ -157,22 +150,23 @@ namespace dsl {
 		template<typename _Init>
 		IntervalHeap(_Init st, _Init ed) :src(_Alloc().New(ed - st)), capacity(ed - st) {
 			size_t cnt = ed - st;
-			this->size = cnt % 2 ? cnt - 1 : cnt;
+			if (cnt % 2) --ed;
+			this->size = ed - st;
+
 			// 数据拷贝
-			std::copy(st, cnt % 2 ? --ed : ed, src);
+			std::copy(st, ed, src);
 
 			// 堆化
-			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*)this->src;
-			size_t i = cnt >> 1;
-			if (i) for (--i; ; --i) {
-				this->HeapDown(i, false);
-				this->HeapDown(i, true);
-				if (!i) break;
+			size_t i = 0;
+			while (i < cnt >> 1) {
+				this->HeapUp(i, true);
+				this->HeapUp(i, false);
+				++i;
 			}
+
+			// 若有奇数个元素，则末尾元素在最后插入
 			if (cnt % 2) this->Push(*ed);
 		}
-
-
 		// 列表初始化
 		IntervalHeap(const std::initializer_list<_Ty>& lst) :IntervalHeap(lst.begin(), lst.size()) {}
 
@@ -190,7 +184,7 @@ namespace dsl {
 			this->size = cp.size;
 
 			// 数据拷贝
-			Memcpy(cp.src, cp.size, this->src, this->capacity);
+			std::copy_n(cp.src, cp.size, this->src);
 			return *this;
 		}
 		// 赋值(移动赋值)
@@ -231,9 +225,8 @@ namespace dsl {
 			// 新元素压入尾结点
 			// 此时需要先进行内部调整，再向上堆化
 			if (this->size % 2) {
-				_Ty* p = (_Ty*)this->src;
-				if (cpr(p[this->size], p[this->size - 1])) {
-					Swap(p[this->size], p[this->size - 1]);
+				if (cpr(this->src[this->size], this->src[this->size - 1])) {
+					Swap(this->src[this->size], this->src[this->size - 1]);
 					this->HeapUp(x, true);
 				}
 				else this->HeapUp(x, false);
@@ -264,8 +257,7 @@ namespace dsl {
 			if (this->size == 1) this->Erase(1);
 			else if (this->size == 2) this->Erase(2);
 			else {
-				_Ty* p = (_Ty*)this->src;
-				Swap(p[1], p[this->size - 1]);
+				Swap(this->src[1], this->src[this->size - 1]);
 				this->Erase(this->size);
 				this->HeapDown(0, false);
 			}
@@ -281,8 +273,7 @@ namespace dsl {
 			}
 			if (this->size == 1) this->Erase(1);
 			else {
-				_Ty* p = (_Ty*)this->src;
-				Swap(p[0], p[this->size - 1]);
+				Swap(this->src[0], this->src[this->size - 1]);
 				this->Erase(this->size);
 				this->HeapDown(0, true);
 			}
@@ -293,15 +284,14 @@ namespace dsl {
 #ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("none element");
 #endif // EXCEPTION_DETECTION
-			_Ty* p = (_Ty*)this->src;
-			return this->size == 1 ? p[0] : p[1];
+			return this->size == 1 ? this->src[0] : this->src[1];
 		}
 		// 返回最小值
 		_Ty Min()const {
 #ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("none element");
 #endif // EXCEPTION_DETECTION
-			return ((_Ty*)this->src)[0];
+			return this->src[0];
 		}
 
 		// 判断函数是否为空
@@ -324,7 +314,7 @@ namespace dsl {
 			// 拷贝源数据
 			if (this->src) {
 				// 拷贝数据(浅拷贝)
-				std::copy_n((char*)this->src, this->size * sizeof(_Ty), (char*)buf);
+				memcpy(buf, this->src, min(cap, this->size) * sizeof(_Ty));
 				// 释放旧资源
 				_Alloc().Free(this->src, 0);
 			}
@@ -339,12 +329,13 @@ namespace dsl {
 
 		// 返回源数据地址
 		_Ty* Data() {
-			return (_Ty*)this->src;
+			return this->src;
 		}
 
 		// 清空元素，不释放资源
 		void Clear() {
-			for (size_t i = 1; i <= this->size; i++) this->Erase(i);
+			for (_Ty* st = src, *ed = src + this->size; st != ed; ++st) st->~_Ty();
+			this->size = 0;
 		}
 
 	protected:
