@@ -211,13 +211,14 @@ namespace dsl {
 
 		// 压入元素
 		void Push(const _Ty& val) { this->Emplace(val); }
+		void Push(_Ty&& val) { this->Emplace(std::move(val)); }
 		// 直接构造
 		template<typename... Args>
 		void Emplace(Args&&... args) {
 			Cmpr cpr;
 			// 容量不足则扩容
 			if (this->size == this->capacity) this->Expand();
-			new(this->src + this->size) _Ty(args...);
+			new(this->src + this->size) _Ty(std::forward<Args>(args)...);
 			// 新元素所在结点下标
 			size_t x = this->size >> 1;
 

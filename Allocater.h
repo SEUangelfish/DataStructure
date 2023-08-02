@@ -6,7 +6,7 @@ namespace dsl {
 	class Allocater {
 	public:
 		// 资源申请函数
-		// 申请失败报异常但不进行初始化操作
+		// 不进行任何初始化操作
 		// cnt:		元素个数
 		// 返回资源指针
 		virtual inline _Ty* New(size_t cnt) {
