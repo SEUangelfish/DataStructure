@@ -315,7 +315,7 @@ namespace dsl {
 			// 拷贝源数据
 			if (this->src) {
 				// 拷贝数据(浅拷贝)
-				memcpy(buf, this->src, min(cap, this->size) * sizeof(_Ty));
+				memcpy(buf, this->src, std::min(cap, this->size) * sizeof(_Ty));
 				// 释放旧资源
 				_Alloc().Free(this->src, 0);
 			}
