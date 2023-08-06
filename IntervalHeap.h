@@ -234,7 +234,9 @@ namespace dsl {
 		}
 
 		// 压入元素
-		void Push(_Ty&& val) { this->Emplace(std::forward<_Ty>(val)); }
+		void Push(const _Ty& val) { this->Emplace(val); }
+		// 压入元素
+		void Push(_Ty&& val) { this->Emplace(std::move(val)); }
 		// 直接构造
 		template<typename... Args>
 		void Emplace(Args&&... args) {
