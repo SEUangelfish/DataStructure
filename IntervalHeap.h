@@ -29,7 +29,7 @@ namespace dsl {
 		// offset:		第几个元素(从1开始)
 		void Erase(size_t offset) {
 #ifdef EXCEPTION_DETECTION
-			if (offset < 1 || offset > this->size) throw std::exception("invalid offset by erase");
+			if (offset < 1 || offset > this->size) throw std::exception("object of IntervalHeap：invalid offset by Erase()");
 #endif // EXCEPTION_DETECTION
 			if (std::is_class_v<_Ty>) this->src[offset - 1].~_Ty();
 			--this->size;
@@ -275,7 +275,7 @@ namespace dsl {
 		void PopMax() {
 			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-				throw std::exception("none element");
+				throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
 			}
@@ -285,14 +285,32 @@ namespace dsl {
 				dsl::Swap(this->src[1], this->src[this->size - 1]);
 				this->Erase(this->size);
 				this->HeapDown(0, false);
+			}
 		}
-	}
+
+		// 删除最大值
+		// popVal：接收删除的元素
+		void PopMax(_Ty& popVal) {
+			if (!this->size) {
+#ifdef EXCEPTION_DETECTION
+				throw std::exception("object of IntervalHeap：none element by PopMax()");
+#endif // EXCEPTION_DETECTION
+				return;
+			}
+
+			if (this->size <= 2) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+			else {
+				dsl::Swap(this->src[1], this->src[this->size - 1]);
+				memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+				this->HeapDown(0, false);
+			}
+		}
 
 		// 删除最小值
 		void PopMin() {
 			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-				throw std::exception("none element");
+				throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
 			}
@@ -301,20 +319,37 @@ namespace dsl {
 				dsl::Swap(this->src[0], this->src[this->size - 1]);
 				this->Erase(this->size);
 				this->HeapDown(0, true);
+			}
 		}
-}
+
+		// 删除最小值
+		// popVal：接收删除的元素
+		void PopMin(_Ty& popVal) {
+			if (!this->size) {
+#ifdef EXCEPTION_DETECTION
+				throw std::exception("object of IntervalHeap：none element by PopMax()");
+#endif // EXCEPTION_DETECTION
+				return;
+			}
+			if (this->size == 1) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+			else {
+				dsl::Swap(this->src[0], this->src[this->size - 1]);
+				memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+				this->HeapDown(0, true);
+			}
+		}
 
 		// 返回最大值
 		_Ty Max()const {
 #ifdef EXCEPTION_DETECTION
-			if (!this->size) throw std::exception("none element");
+			if (!this->size) throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 			return this->size == 1 ? this->src[0] : this->src[1];
 		}
 		// 返回最小值
 		_Ty Min()const {
 #ifdef EXCEPTION_DETECTION
-			if (!this->size) throw std::exception("none element");
+			if (!this->size) throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 			return this->src[0];
 		}
