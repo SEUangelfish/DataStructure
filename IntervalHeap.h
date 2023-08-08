@@ -55,9 +55,9 @@ namespace dsl {
 			// 小堆调整
 			if (minHeap) {
 				cnt = (this->size >> 1) + (this->size & 1);
-				// 结点内部调整
+				// 结点内部调整  
 				// 如果元素个数为奇数则尾结点不用调整
-				if ((x < cnt - 1 || !(this->size & 2)) && this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
+				if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
 				while (l < cnt) {
 					tar = r >= cnt || this->cpr(p[l].L, p[r].L) ? l : r;
 					if (this->cpr(p[x].L, p[tar].L)) return;
@@ -70,7 +70,7 @@ namespace dsl {
 			}
 			// 大堆调整
 			else {
-				// 如果元素个数为奇数则最后一个结点不用处理
+				// 如果元素个数为奇数则尾结点不用处理
 				cnt = this->size >> 1;
 				// 结点内部调整
 				if (this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
@@ -89,6 +89,9 @@ namespace dsl {
 		// x:			结点下标
 		// minHeap:		true调整小堆，false调整大堆
 		void HeapUp(size_t x, bool minHeap) {
+			// 向上堆化前先自行内部调整
+			// 堆化中不用再进行内部调整
+
 			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*) this->src;
 			// fa	父结点
 			size_t fa = (x - 1) >> 1;
@@ -125,11 +128,17 @@ namespace dsl {
 			std::copy(st, ed, this->src);
 
 			// 堆化
-			// 不能跳过叶子结点，需要做内部调整
-			if (cnt > 1) for (size_t i = (cnt >> 1) - 1;; --i) {
-				this->HeapDown(i, false);
-				this->HeapDown(i, true);
-				if (!i) break;
+			if (cnt > 1) {
+				size_t i = cnt >> 2, j = cnt >> 1;
+				// 叶子结点内部调整
+				std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*)this->src;
+				for (; i < j; ++i) if (this->cpr(p[i].R, p[i].L)) dsl::Swap(p[i].L, p[i].R);
+				// 分支结点向下堆化
+				for (i = cnt >> 2;; --i) {
+					this->HeapDown(i, false);
+					this->HeapDown(i, true);
+					if (!i) break;
+				}
 			}
 
 			// 若有奇数个元素，则末尾元素在最后插入
@@ -279,8 +288,7 @@ namespace dsl {
 #endif // EXCEPTION_DETECTION
 				return;
 			}
-			if (this->size == 1) this->Erase(1);
-			else if (this->size == 2) this->Erase(2);
+			if (this->size <= 2) this->Erase(this->size);
 			else {
 				dsl::Swap(this->src[1], this->src[this->size - 1]);
 				this->Erase(this->size);
@@ -297,7 +305,6 @@ namespace dsl {
 #endif // EXCEPTION_DETECTION
 				return;
 			}
-
 			if (this->size <= 2) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
 			else {
 				dsl::Swap(this->src[1], this->src[this->size - 1]);
