@@ -22,7 +22,7 @@ namespace dsl {
 			bool operator() (_Ty& v1, _Ty& v2) {
 				return LessTag ^ _cpr(v1, v2);
 			}
-			_Cmpr _cpr;
+			_Cmpr _cpr{};
 		};
 
 		// 删除某一元素
@@ -125,11 +125,11 @@ namespace dsl {
 			std::copy(st, ed, this->src);
 
 			// 堆化
-			size_t i = 0;
-			while (i < cnt >> 1) {
-				this->HeapUp(i, true);
-				this->HeapUp(i, false);
-				++i;
+			// 不能跳过叶子结点，需要做内部调整
+			if (cnt > 1) for (size_t i = (cnt >> 1) - 1;; --i) {
+				this->HeapDown(i, false);
+				this->HeapDown(i, true);
+				if (!i) break;
 			}
 
 			// 若有奇数个元素，则末尾元素在最后插入
@@ -285,8 +285,8 @@ namespace dsl {
 				dsl::Swap(this->src[1], this->src[this->size - 1]);
 				this->Erase(this->size);
 				this->HeapDown(0, false);
-			}
 		}
+	}
 
 		// 删除最小值
 		void PopMin() {
@@ -301,8 +301,8 @@ namespace dsl {
 				dsl::Swap(this->src[0], this->src[this->size - 1]);
 				this->Erase(this->size);
 				this->HeapDown(0, true);
-			}
 		}
+}
 
 		// 返回最大值
 		_Ty Max()const {
