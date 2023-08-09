@@ -11,4 +11,5 @@ namespace dsl {
 		memcpy(&p, &q, sizeof(_Ty));
 		memcpy(&q, buf, sizeof(_Ty));
 	}
+
 }

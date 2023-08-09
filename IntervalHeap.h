@@ -52,37 +52,44 @@ namespace dsl {
 			// 结点个数
 			size_t cnt;
 
+			char buf[sizeof(_Ty)];
+			_Ty* tmp = (_Ty*)buf;
+
 			// 小堆调整
 			if (minHeap) {
+				memcpy(tmp, &p[x].L, sizeof(_Ty));
 				cnt = (this->size >> 1) + (this->size & 1);
 				// 结点内部调整  
 				// 如果元素个数为奇数则尾结点不用调整
-				if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
+				if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, *tmp)) dsl::Swap(*tmp, p[x].R);
 				while (l < cnt) {
 					tar = r >= cnt || this->cpr(p[l].L, p[r].L) ? l : r;
-					if (this->cpr(p[x].L, p[tar].L)) return;
-					dsl::Swap(p[tar].L, p[x].L);
+					if (this->cpr(*tmp, p[tar].L)) break;
+					memcpy(&p[x].L, &p[tar].L, sizeof(_Ty));
 					x = tar;
 					// 结点内部调整
-					if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
+					if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, *tmp)) dsl::Swap(*tmp, p[x].R);
 					l = (x << 1) + 1, r = l + 1;
 				}
+				memcpy(&p[x].L, tmp, sizeof(_Ty));
 			}
 			// 大堆调整
 			else {
+				memcpy(tmp, &p[x].R, sizeof(_Ty));
 				// 如果元素个数为奇数则尾结点不用处理
 				cnt = this->size >> 1;
 				// 结点内部调整
-				if (this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
+				if (this->cpr(*tmp, p[x].L)) dsl::Swap(p[x].L, *tmp);
 				while (l < cnt) {
 					tar = r >= cnt || this->cpr(p[r].R, p[l].R) ? l : r;
-					if (this->cpr(p[tar].R, p[x].R)) return;
-					dsl::Swap(p[x].R, p[tar].R);
+					if (this->cpr(p[tar].R, *tmp)) break;
+					memcpy(&p[x].R, &p[tar].R, sizeof(_Ty));
 					x = tar;
 					// 结点内部调整
-					if (this->cpr(p[x].R, p[x].L)) dsl::Swap(p[x].L, p[x].R);
+					if (this->cpr(*tmp, p[x].L)) dsl::Swap(p[x].L, *tmp);
 					l = (x << 1) + 1, r = l + 1;
 				}
+				memcpy(&p[x].R, tmp, sizeof(_Ty));
 			}
 		}
 		// 向上堆化
@@ -95,19 +102,27 @@ namespace dsl {
 			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*) this->src;
 			// fa	父结点
 			size_t fa = (x - 1) >> 1;
+
+			char buf[sizeof(_Ty)];
+			_Ty* tmp = (_Ty*)buf;
+
 			if (minHeap) {
-				while (x && this->cpr(p[x].L, p[fa].L)) {
-					dsl::Swap(p[x].L, p[fa].L);
+				memcpy(tmp, &p[x].L, sizeof(_Ty));
+				while (x && this->cpr(*tmp, p[fa].L)) {
+					memcpy(&p[x].L, &p[fa].L, sizeof(_Ty));
 					x = fa;
 					fa = (x - 1) >> 1;
 				}
+				memcpy(&p[x].L, tmp, sizeof(_Ty));
 			}
 			else {
-				while (x && this->cpr(p[fa].R, p[x].R)) {
-					dsl::Swap(p[fa].R, p[x].R);
+				memcpy(tmp, &p[x].R, sizeof(_Ty));
+				while (x && this->cpr(p[fa].R, *tmp)) {
+					memcpy(&p[x].R, &p[fa].R, sizeof(_Ty));
 					x = fa;
 					fa = (x - 1) >> 1;
 				}
+				memcpy(&p[x].R, tmp, sizeof(_Ty));
 			}
 		}
 
@@ -290,8 +305,9 @@ namespace dsl {
 			}
 			if (this->size <= 2) this->Erase(this->size);
 			else {
-				dsl::Swap(this->src[1], this->src[this->size - 1]);
-				this->Erase(this->size);
+				this->Erase(2);
+				// 注意：Erase已经把size-1了
+				memcpy(this->src + 1, this->src + this->size, sizeof(_Ty));
 				this->HeapDown(0, false);
 			}
 		}
@@ -304,14 +320,14 @@ namespace dsl {
 				throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
-			}
+		}
 			if (this->size <= 2) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
 			else {
-				dsl::Swap(this->src[1], this->src[this->size - 1]);
-				memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+				memcpy(&popVal, this->src + 1, sizeof(_Ty));
+				memcpy(this->src + 1, this->src + (--this->size), sizeof(_Ty));
 				this->HeapDown(0, false);
 			}
-		}
+	}
 
 		// 删除最小值
 		void PopMin() {
@@ -320,14 +336,15 @@ namespace dsl {
 				throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
-			}
+		}
 			if (this->size == 1) this->Erase(1);
 			else {
-				dsl::Swap(this->src[0], this->src[this->size - 1]);
-				this->Erase(this->size);
+				this->Erase(1);
+				// 注意：Erase已经把size-1了
+				memcpy(this->src, this->src + this->size, sizeof(_Ty));
 				this->HeapDown(0, true);
 			}
-		}
+}
 
 		// 删除最小值
 		// popVal：接收删除的元素
@@ -340,8 +357,8 @@ namespace dsl {
 			}
 			if (this->size == 1) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
 			else {
-				dsl::Swap(this->src[0], this->src[this->size - 1]);
-				memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+				memcpy(&popVal, this->src, sizeof(_Ty));
+				memcpy(this->src, this->src + (--this->size), sizeof(_Ty));
 				this->HeapDown(0, true);
 			}
 		}
@@ -418,5 +435,5 @@ namespace dsl {
 		// 容量大小
 		size_t capacity = 0;
 
-	};
+		};
 }
