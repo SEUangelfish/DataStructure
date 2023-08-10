@@ -65,16 +65,39 @@ namespace dsl {
 	public:
 		// 默认构造
 		SplayTree() = default;
-		
+
 		// 虚析构函数
 		virtual ~SplayTree() {
-			
+
 		}
 
 		// 插入函数
 		void Insert() {
 
 		}
+
+		template<typename... _Args>
+		void Emplace(_Args&&... args) {
+			// 新结点
+			SNode* newNode = this->alloc.New(1);
+			new (newNode) SNode(std::forward<_Args>(args)...);
+
+			// 空树
+			if (!this->root) {
+				this->root = newNode;
+				return;
+			}
+
+			// 寻找插入位置
+			SNode* u = this->root, * fa = nullptr;
+			while (u && (this->cpr(u->key, newNode->key) != this->cpr(newNode->key, u->key))) {
+				fa = u;
+				u = u->ch[this->cpr(newNode->key, u->key)];
+			}
+
+
+		}
+
 
 	protected:
 		// 根结点
@@ -93,8 +116,16 @@ namespace dsl {
 		template<typename _KTy, typename _VTy, typename _Cmpr, template<typename _NTy> typename _Alloc>
 		friend class SplayTree;
 	public:
-		//默认构造
+		// 默认构造
 		SplayNode() = default;
+		// 初始化键、值
+		SplayNode(const _KTy& _key, const _VTy& _val) :key(_key), val(_val) {}
+		// 初始化键、值
+		SplayNode(_KTy&& _key, const _VTy& _val) :key(std::move(_key)), val(_val) {}
+		// 初始化键、值
+		SplayNode(const _KTy& _key, _VTy&& _val) :key(_key), val(std::move(_val)) {}
+		// 初始化键、值
+		SplayNode(_KTy&& _key, _VTy&& _val) :key(std::move(_key)), val(std::move(_val)) {}
 
 	protected:
 		// 父节点

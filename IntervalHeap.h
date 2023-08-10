@@ -45,51 +45,45 @@ namespace dsl {
 		// minHeap:		true调整小堆，false调整大堆
 		void HeapDown(size_t x, bool minHeap) {
 			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*) this->src;
-			// 左右孩子下标
-			size_t l = (x << 1) + 1, r = l + 1;
-			// 目标值的下标
-			size_t tar;
-			// 结点个数
-			size_t cnt;
-
-			char buf[sizeof(_Ty)];
-			_Ty* tmp = (_Ty*)buf;
+			// i：孩子结点下标
+			// cnt：结点个数
+			size_t i, cnt;
 
 			// 小堆调整
 			if (minHeap) {
-				memcpy(tmp, &p[x].L, sizeof(_Ty));
+				_Ty tmp = std::move(p[x].L);
 				cnt = (this->size >> 1) + (this->size & 1);
+
 				// 结点内部调整  
 				// 如果元素个数为奇数则尾结点不用调整
-				if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, *tmp)) dsl::Swap(*tmp, p[x].R);
-				while (l < cnt) {
-					tar = r >= cnt || this->cpr(p[l].L, p[r].L) ? l : r;
-					if (this->cpr(*tmp, p[tar].L)) break;
-					memcpy(&p[x].L, &p[tar].L, sizeof(_Ty));
-					x = tar;
+				if (x < cnt - (this->size & 1) && this->cpr(p[x].R, tmp)) std::swap(tmp, p[x].R);
+
+				for (i = (x << 1) + 1; i < cnt; ++(i <<= 1)) {
+					if (i + 1 < cnt && this->cpr(p[i + 1].L, p[i].L)) ++i;
+					if (this->cpr(tmp, p[i].L)) break;
+					p[x].L = std::move(p[i].L);
+					x = i;
 					// 结点内部调整
-					if ((x < cnt - 1 || !(this->size & 1)) && this->cpr(p[x].R, *tmp)) dsl::Swap(*tmp, p[x].R);
-					l = (x << 1) + 1, r = l + 1;
+					if (x < cnt - (this->size & 1) && this->cpr(p[x].R, tmp)) std::swap(tmp, p[x].R);
 				}
-				memcpy(&p[x].L, tmp, sizeof(_Ty));
+				p[x].L = std::move(tmp);
 			}
 			// 大堆调整
 			else {
-				memcpy(tmp, &p[x].R, sizeof(_Ty));
+				_Ty tmp = std::move(p[x].R);
 				// 如果元素个数为奇数则尾结点不用处理
 				cnt = this->size >> 1;
 				// 结点内部调整
-				if (this->cpr(*tmp, p[x].L)) dsl::Swap(p[x].L, *tmp);
-				while (l < cnt) {
-					tar = r >= cnt || this->cpr(p[r].R, p[l].R) ? l : r;
-					if (this->cpr(p[tar].R, *tmp)) break;
-					memcpy(&p[x].R, &p[tar].R, sizeof(_Ty));
-					x = tar;
+				if (this->cpr(tmp, p[x].L)) std::swap(p[x].L, tmp);
+				for (i = (x << 1) + 1; i < cnt; ++(i <<= 1)) {
+					if (i + 1 < cnt && this->cpr(p[i].R, p[i + 1].R)) ++i;
+					if (this->cpr(p[i].R, tmp)) break;
+					p[x].R = std::move(p[i].R);
+					x = i;
 					// 结点内部调整
-					if (this->cpr(*tmp, p[x].L)) dsl::Swap(p[x].L, *tmp);
-					l = (x << 1) + 1, r = l + 1;
+					if (this->cpr(tmp, p[x].L)) std::swap(p[x].L, tmp);
 				}
-				memcpy(&p[x].R, tmp, sizeof(_Ty));
+				p[x].R = std::move(tmp);
 			}
 		}
 		// 向上堆化
@@ -100,29 +94,24 @@ namespace dsl {
 			// 堆化中不用再进行内部调整
 
 			std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*) this->src;
-			// fa	父结点
-			size_t fa = (x - 1) >> 1;
-
-			char buf[sizeof(_Ty)];
-			_Ty* tmp = (_Ty*)buf;
+			// fa:	父结点
+			size_t fa;
 
 			if (minHeap) {
-				memcpy(tmp, &p[x].L, sizeof(_Ty));
-				while (x && this->cpr(*tmp, p[fa].L)) {
-					memcpy(&p[x].L, &p[fa].L, sizeof(_Ty));
+				_Ty tmp = std::move(p[x].L);
+				while (x && this->cpr(tmp, p[fa = (x - 1) >> 1].L)) {
+					p[x].L = std::move(p[fa].L);
 					x = fa;
-					fa = (x - 1) >> 1;
 				}
-				memcpy(&p[x].L, tmp, sizeof(_Ty));
+				p[x].L = std::move(tmp);
 			}
 			else {
-				memcpy(tmp, &p[x].R, sizeof(_Ty));
-				while (x && this->cpr(p[fa].R, *tmp)) {
-					memcpy(&p[x].R, &p[fa].R, sizeof(_Ty));
+				_Ty tmp = std::move(p[x].R);
+				while (x && this->cpr(p[fa = (x - 1) >> 1].R, tmp)) {
+					p[x].R = std::move(p[fa].R);
 					x = fa;
-					fa = (x - 1) >> 1;
 				}
-				memcpy(&p[x].R, tmp, sizeof(_Ty));
+				p[x].R = std::move(tmp);
 			}
 		}
 
@@ -147,7 +136,7 @@ namespace dsl {
 				size_t i = cnt >> 2, j = cnt >> 1;
 				// 叶子结点内部调整
 				std::pair<_Ty, _Ty>* p = (std::pair<_Ty, _Ty>*)this->src;
-				for (; i < j; ++i) if (this->cpr(p[i].R, p[i].L)) dsl::Swap(p[i].L, p[i].R);
+				for (; i < j; ++i) if (this->cpr(p[i].R, p[i].L)) std::swap(p[i].L, p[i].R);
 				// 分支结点向下堆化
 				for (i = cnt >> 2;; --i) {
 					this->HeapDown(i, false);
@@ -183,7 +172,8 @@ namespace dsl {
 		}
 		// 移动构造
 		IntervalHeap(IntervalHeap&& mv) noexcept :cpr{ std::move(mv.cpr) }, alloc(std::move(mv.alloc)), src(mv.src), size(mv.size), capacity(mv.capacity) {
-			memset(&mv, 0, sizeof(IntervalHeap<_Ty, LessTag, _Cmpr, _Alloc>));
+			mv.size = 0;
+			mv.src = nullptr;
 		}
 		// 批构造
 		// st：首元素地址
@@ -254,7 +244,6 @@ namespace dsl {
 		// 析构函数
 		~IntervalHeap() {
 			this->alloc.Free(this->src, this->size);
-			memset(this, 0, sizeof(IntervalHeap<_Ty, LessTag, _Cmpr, _Alloc>));
 		}
 
 		// 压入元素
@@ -262,11 +251,11 @@ namespace dsl {
 		// 压入元素
 		void Push(_Ty&& val) { this->Emplace(std::move(val)); }
 		// 直接构造
-		template<typename... Args>
-		void Emplace(Args&&... args) {
+		template<typename... _Args>
+		void Emplace(_Args&&... args) {
 			// 容量不足则扩容
 			if (this->size == this->capacity) this->Expand();
-			new(this->src + this->size) _Ty(std::forward<Args>(args)...);
+			new(this->src + this->size) _Ty(std::forward<_Args>(args)...);
 			// 新元素所在结点下标
 			size_t x = this->size >> 1;
 
@@ -275,7 +264,7 @@ namespace dsl {
 			// 此时需要先进行内部调整，再向上堆化
 			if (this->size & 1) {
 				if (this->cpr(this->src[this->size], this->src[this->size - 1])) {
-					dsl::Swap(this->src[this->size], this->src[this->size - 1]);
+					std::swap(this->src[this->size], this->src[this->size - 1]);
 					this->HeapUp(x, true);
 				}
 				else this->HeapUp(x, false);
@@ -288,7 +277,7 @@ namespace dsl {
 				size_t fa = (x - 1) >> 1;
 				if (this->cpr(p[x].L, p[fa].L)) this->HeapUp(x, true);
 				else if (this->cpr(p[fa].R, p[x].L)) {
-					dsl::Swap(p[fa].R, p[x].L);
+					std::swap(p[fa].R, p[x].L);
 					this->HeapUp(fa, false);
 				}
 			}
@@ -307,7 +296,7 @@ namespace dsl {
 			else {
 				this->Erase(2);
 				// 注意：Erase已经把size-1了
-				memcpy(this->src + 1, this->src + this->size, sizeof(_Ty));
+				this->src[1] = std::move(this->src[this->size]);
 				this->HeapDown(0, false);
 			}
 		}
@@ -320,14 +309,14 @@ namespace dsl {
 				throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
-		}
-			if (this->size <= 2) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+			}
+			if (this->size <= 2) popVal = std::move(this->src[--this->size]);
 			else {
-				memcpy(&popVal, this->src + 1, sizeof(_Ty));
-				memcpy(this->src + 1, this->src + (--this->size), sizeof(_Ty));
+				popVal = std::move(this->src[1]);
+				this->src[1] = std::move(this->src[--this->size]);
 				this->HeapDown(0, false);
 			}
-	}
+		}
 
 		// 删除最小值
 		void PopMin() {
@@ -336,15 +325,15 @@ namespace dsl {
 				throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
-		}
+			}
 			if (this->size == 1) this->Erase(1);
 			else {
 				this->Erase(1);
 				// 注意：Erase已经把size-1了
-				memcpy(this->src, this->src + this->size, sizeof(_Ty));
+				this->src[0] = std::move(this->src[this->size]);
 				this->HeapDown(0, true);
 			}
-}
+		}
 
 		// 删除最小值
 		// popVal：接收删除的元素
@@ -355,10 +344,10 @@ namespace dsl {
 #endif // EXCEPTION_DETECTION
 				return;
 			}
-			if (this->size == 1) memcpy(&popVal, this->src + (--this->size), sizeof(_Ty));
+			if (this->size == 1) popVal = std::move(this->src[--this->size]);
 			else {
-				memcpy(&popVal, this->src, sizeof(_Ty));
-				memcpy(this->src, this->src + (--this->size), sizeof(_Ty));
+				popVal = std::move(this->src[0]);
+				this->src[0] = std::move(this->src[--this->size]);
 				this->HeapDown(0, true);
 			}
 		}
@@ -368,7 +357,7 @@ namespace dsl {
 #ifdef EXCEPTION_DETECTION
 			if (!this->size) throw std::exception("object of IntervalHeap：none element by PopMax()");
 #endif // EXCEPTION_DETECTION
-			return this->size == 1 ? this->src[0] : this->src[1];
+			return this->src[this->size > 1];
 		}
 		// 返回最小值
 		_Ty Min()const {
@@ -435,5 +424,5 @@ namespace dsl {
 		// 容量大小
 		size_t capacity = 0;
 
-		};
+	};
 }
