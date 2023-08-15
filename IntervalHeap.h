@@ -369,7 +369,7 @@ namespace dsl {
 
 		// 判断函数是否为空
 		inline bool Empty()const {
-			return this->size;
+			return !this->size;
 		}
 
 		// 返回元素个数
