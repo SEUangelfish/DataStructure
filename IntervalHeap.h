@@ -9,7 +9,7 @@
 namespace dsl {
 	// 间隔树结构
 	// _Ty			元素类型
-	// LessTag		比较器标志(若采用大于比较器则置false)
+	// LessTag		比较器标志(若采用大于比较器则置true)
 	// _Cmpr		比较器(默认采用小于比较器)
 	// _Alloc		内存分配器类型
 	template<typename _Ty, bool LessTag = false, typename _Cmpr = std::less<_Ty>, typename _Alloc = dsl::Allocater<_Ty>>
