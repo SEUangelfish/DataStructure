@@ -6,14 +6,14 @@ namespace dsl {
 	class Iterator {
 	protected:
 		// 结构中元素类型
-		using _SrcType = _DSTy::_ElemType;
+		using _ElemType = _DSTy::_ElemType;
 
 	public:
 		// 默认构造
 		Iterator() = default;
 		// 带参构造
 		// _src：源数据指针
-		Iterator(_SrcType* _src) : src(_src) {}
+		Iterator(_ElemType* _src) : src(_src) {}
 		// 拷贝构造
 		Iterator(const Iterator& cp) : src(cp.src) {}
 		// 移动构造
@@ -33,39 +33,39 @@ namespace dsl {
 		// 判等
 		ptrdiff_t operator==(const Iterator& cpr) { return this->src == cpr.src; }
 		// 解引用
-		_SrcType& operator*() { return *this->src; }
+		_ElemType& operator*() { return *this->src; }
 		// 指针
-		_SrcType* operator->() { return this->src; }
+		_ElemType* operator->() { return this->src; }
 
 
 	protected:
 		// 源数据指针
-		_SrcType* src = nullptr;
+		_ElemType* src = nullptr;
 	};
 
-	template<typename _KTy, typename _VTy, typename _Cmpr, template<typename _NTy> typename _Alloc>
+	template<typename _Node, typename _Cmpr, typename _Alloc>
 	class SplayTree;
 
 	template<typename _DSTy>
-	class SplayTree_Iterator : public Iterator<_DSTy>
+	class SplayTreeIterator : public Iterator<_DSTy>
 	{
-		template<typename _KTy, typename _VTy, typename _Cmpr, template<typename _NTy> typename _Alloc>
+		template<typename _Node, typename _Cmpr, typename _Alloc>
 		friend class SplayTree;
 	public:
 		// 默认构造
-		SplayTree_Iterator() = default;
+		SplayTreeIterator() = default;
 		// 带参构造
 		// _src：源数据指针
-		SplayTree_Iterator(Iterator<_DSTy>::_SrcType* _src) : Iterator<_DSTy>(_src) {}
+		SplayTreeIterator(Iterator<_DSTy>::_ElemType* _src) : Iterator<_DSTy>(_src) {}
 		// 拷贝构造
-		SplayTree_Iterator(const SplayTree_Iterator& cp) : Iterator<_DSTy>(cp) {}
+		SplayTreeIterator(const SplayTreeIterator& cp) : Iterator<_DSTy>(cp) {}
 		// 移动构造
-		SplayTree_Iterator(SplayTree_Iterator&& mv) noexcept :Iterator<_DSTy>(std::move(mv)) {}
+		SplayTreeIterator(SplayTreeIterator&& mv) noexcept :Iterator<_DSTy>(std::move(mv)) {}
 		// 虚析构
-		virtual ~SplayTree_Iterator() {}
+		virtual ~SplayTreeIterator() {}
 
 		// 自增
-		virtual Iterator<_DSTy>& operator++() {
+		Iterator<_DSTy>& operator++() {
 #ifdef EXCEPTION_DETECTION
 			if (!this->src) throw exception("object of SplayTree iterator：invalid operation by ++ (null pointer of source data)");
 			if (this->src->end) throw exception("object of SplayTree iterator：can't be ++ any more");
@@ -82,9 +82,14 @@ namespace dsl {
 			}
 			return *this;
 		};
+		// 自增后旋转到根节点
+		Iterator<_DSTy>& Next(_DSTy& tree) {
+			this->operator++();
+			tree.Splay(this->src);
+		}
 
 		// 自减
-		virtual Iterator<_DSTy>& operator--() {
+		Iterator<_DSTy>& operator--() {
 #ifdef EXCEPTION_DETECTION
 			if (!this->src) throw exception("object of SplayTree iterator：invalid operation by -- (null pointer of source data)");
 #endif // EXCEPTION_DETECTION
@@ -104,6 +109,11 @@ namespace dsl {
 			}
 			return *this;
 		};
+		// 自减后旋转到根节点
+		Iterator<_DSTy>& Prev(_DSTy& tree) {
+			this->operator--();
+			tree.Splay(this->src);
+		}
 
 	};
 }
