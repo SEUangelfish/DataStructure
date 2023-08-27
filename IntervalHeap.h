@@ -29,7 +29,7 @@ namespace dsl {
 		// offset:		第几个元素(从1开始)
 		void Erase(size_t offset) {
 #ifdef EXCEPTION_DETECTION
-			if (offset < 1 || offset > this->size) throw std::exception("object of IntervalHeap：invalid offset by Erase()");
+			if (offset < 1 || offset > this->size) throw std::exception("object of IntervalHeap: invalid offset by Erase()");
 #endif // EXCEPTION_DETECTION
 			if (std::is_class_v<_Ty>) this->src[offset - 1].~_Ty();
 			--this->size;
@@ -226,7 +226,7 @@ namespace dsl {
 		}
 
 		// 列表初始化
-		IntervalHeap(const std::initializer_list<_Ty>& lst) :IntervalHeap(lst.begin(), lst.size()) {}
+		IntervalHeap(std::initializer_list<_Ty> lst) :IntervalHeap(lst.begin(), lst.end()) {}
 
 		// 赋值(深拷贝)
 		IntervalHeap& operator= (const IntervalHeap& cp) {
@@ -243,13 +243,14 @@ namespace dsl {
 
 		// 析构函数
 		~IntervalHeap() {
-			this->alloc.Free(this->src, this->size);
+			if (this->src) this->alloc.Free(this->src, this->size);
 		}
 
 		// 压入元素
 		void Push(const _Ty& val) { this->Emplace(val); }
 		// 压入元素
 		void Push(_Ty&& val) { this->Emplace(std::move(val)); }
+
 		// 直接构造
 		template<typename... _Args>
 		void Emplace(_Args&&... args) {
@@ -288,7 +289,7 @@ namespace dsl {
 		void PopMax() {
 			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-				throw std::exception("object of IntervalHeap：none element by PopMax()");
+				throw std::exception("object of IntervalHeap: none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
 			}
@@ -306,7 +307,7 @@ namespace dsl {
 		void PopMax(_Ty& popVal) {
 			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-				throw std::exception("object of IntervalHeap：none element by PopMax()");
+				throw std::exception("object of IntervalHeap: none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
 			}
@@ -322,7 +323,7 @@ namespace dsl {
 		void PopMin() {
 			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-				throw std::exception("object of IntervalHeap：none element by PopMax()");
+				throw std::exception("object of IntervalHeap: none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
 			}
@@ -340,7 +341,7 @@ namespace dsl {
 		void PopMin(_Ty& popVal) {
 			if (!this->size) {
 #ifdef EXCEPTION_DETECTION
-				throw std::exception("object of IntervalHeap：none element by PopMax()");
+				throw std::exception("object of IntervalHeap: none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 				return;
 			}
@@ -355,14 +356,14 @@ namespace dsl {
 		// 返回最大值
 		_Ty Max()const {
 #ifdef EXCEPTION_DETECTION
-			if (!this->size) throw std::exception("object of IntervalHeap：none element by PopMax()");
+			if (!this->size) throw std::exception("object of IntervalHeap: none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 			return this->src[this->size > 1];
 		}
 		// 返回最小值
 		_Ty Min()const {
 #ifdef EXCEPTION_DETECTION
-			if (!this->size) throw std::exception("object of IntervalHeap：none element by PopMax()");
+			if (!this->size) throw std::exception("object of IntervalHeap: none element by PopMax()");
 #endif // EXCEPTION_DETECTION
 			return this->src[0];
 		}
