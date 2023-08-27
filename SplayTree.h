@@ -11,6 +11,10 @@ namespace dsl {
 	class SplaySetNode {
 		template<typename _Node, typename _Cmpr, typename _Alloc>
 		friend class SplayTree;
+
+		template<typename _DSTy>
+		friend class SplayTreeIterator;
+
 	public:
 		// 键类型
 		using _KTy = _Key;
@@ -77,11 +81,11 @@ namespace dsl {
 		bool end = false;
 	};
 
-	// 伸展树	
+	// 伸展树根类	
 	// _Node		节点类型
 	// _Cmpr		比较器
-	// _Alloc		分配器模板
-	template<typename _Node, typename _Cmpr = std::less<typename _Node::_KTy>, typename _Alloc = dsl::RecycleAllocater<_Node>>
+	// _Alloc		分配器
+	template<typename _Node, typename _Cmpr, typename _Alloc>
 	class SplayTree {
 	public:
 		// 迭代器类型
@@ -121,9 +125,21 @@ namespace dsl {
 			PushUp(x);
 		}
 
+		// 合并左右子树
+		_Node* Combine(_Node* left, _Node* right) {
+			if (!left) return right;
+			if (!right) return left;
+			while (left->ch[1]) left = left->ch[1];
+			this->Splay(left);
+			left->ch[1] = right;
+			right->fa = left;
+			this->PushUp(left);
+			return left;
+		}
+
 	public:
 		// 默认构造：添加尾节点
-		SplayTree() : root(this->alloc.New(1)), size(1) {
+		SplayTree() : root(this->alloc.New(1)) {
 			// 不直接调用构造函数，键值对可能没有默认构造函数
 			this->root->fa = this->root->ch[0] = this->root->ch[1] = nullptr;
 			this->root->end = true;
@@ -195,10 +211,10 @@ namespace dsl {
 		size_t Size() { return this->size; }
 
 		// 判断是否为空
-		bool Empty() { return this->size == 1; }
+		bool Empty() { return !this->size; }
 
 		// 返回根节点
-		_Node* Root() { return this->size == 1; }
+		_Node* Root() { return this->root; }
 
 		// 返回首迭代器
 		Iterator Begin() {
@@ -231,7 +247,7 @@ namespace dsl {
 		// 不存在则返回尾迭代器
 		Iterator Find(const _KTy& key) {
 			_Node* u = this->root;
-			while (u && *u != key) u = u->ch[!(u < key)];
+			while (u && (this->operator()(*u, key) != this->operator()(key, *u))) u = u->ch[this->operator()(key, *u)];
 			if (!u) return this->End();
 			this->Splay(u);
 			return u;
@@ -304,21 +320,48 @@ namespace dsl {
 		}
 
 		// 插入函数
-		//void Insert() {
+		// key：键
+		// 返回值同Emplace
+		std::pair<Iterator, bool> Insert(const _KTy& key) {
+			return this->Emplace(key);
+		}
+		// 插入函数
+		// key：键
+		// 返回值同Emplace
+		std::pair<Iterator, bool> Insert(_KTy&& key) {
+			return this->Emplace(std::move(key));
+		}
+		// 批量插入
+		// begin：首迭代器/首指针
+		// end：尾迭代器/尾指针
+		template <typename _Iter>
+		void Insert(_Iter begin, _Iter end) {
+			while (begin != end) {
+				this->Emplace(*begin);
+				++begin;
+			}
+		}
+		// 参数列表批量插入
+		void Insert(std::initializer_list<_KTy> vlist) {
+			this->Insert(vlist.begin(), vlist.end());
+		}
 
-		//}
-
+		// 构造节点并插入
+		// args：构造节点的参数
+		// 返回值的第二个参数表示插入是否成功
+		// 若成功，第一个参数为插入节点迭代器
+		// 若失败，第一个参数为与之冲突的节点的迭代器
 		template<typename... _Args>
-		void Emplace(_Args&&... args) {
+		std::pair<Iterator, bool> Emplace(_Args&&... args) {
 			_Node* pre = nullptr, * u = this->root, * v = this->alloc.New(1);
 			new (v) _Node(std::forward<_Args>(args)...);
 
 			while (u) {
 				if (this->operator()(*u, *v) == this->operator()(*v, *u)) {
-					*u = std::move(*v);
 					this->alloc.Free(v, 1);
 					this->Splay(u);
-					return;
+					++this->size;
+					return std::make_pair(u, false);
 				}
 				pre = u;
 				u = u->ch[this->operator()(*u, *v)];
@@ -327,13 +370,38 @@ namespace dsl {
 			pre->ch[this->operator()(*pre, *v)] = v;
 			v->fa = pre;
 			this->Splay(v);
+			++this->size;
+			return std::make_pair(v, true);
 		}
 
-		//void Erase() {
+		// 删除节点
+		// itr：删除节点迭代器
+		void Erase(Iterator itr) {
+#ifdef EXCEPTION_DETECTION
+			if (itr->end || this->Find(itr->key) != itr) throw std::exception("object of SplayTree：invalid iterator by Erase()");
+#endif // EXCEPTION_DETECTION
+			this->Splay(*itr);
+			_Node* tmp = this->root;
+			this->root = this->Combine(this->root->ch[0], this->root->ch[1]);
+			--this->size;
+			this->alloc.Free(tmp, 1);
+		}
 
-		//}
+		// 删除节点
+		// key：目标节点键
+		// 成功返回true
+		bool Erase(const _KTy& key) {
+			if (this->Find(key)->end) return false;
+			_Node* tmp = this->root;
+			this->root = this->Combine(this->root->ch[0], this->root->ch[1]);
+			--this->size;
+			this->alloc.Free(tmp, 1);
+		}
 
-
+		// 是否包含键key
+		bool Contains(const _KTy& key) {
+			return !this->Find(key)->end;
+		}
 
 	protected:
 		// 分配器
@@ -343,7 +411,7 @@ namespace dsl {
 		// 根结点
 		_Node* root;
 		// 元素个数
-		size_t size;
+		size_t size = 0;
 	};
 
 
