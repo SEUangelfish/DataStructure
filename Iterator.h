@@ -22,9 +22,7 @@ namespace dsl {
 		}
 
 		// ÐéÎö¹¹
-		virtual ~Iterator() {
-			this->src = nullptr;
-		}
+		virtual ~Iterator() {}
 
 		// ×ÔÔö
 		virtual Iterator& operator++() = 0;
