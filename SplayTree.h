@@ -6,7 +6,7 @@
 
 namespace dsl {
 	// 伸展树结点
-// _Key			键类型(键、值相同)
+	// _Key：键类型(键、值相同)
 	template<typename _Key>
 	class SplaySetNode {
 		template<typename _Node, typename _Cmpr, typename _Alloc>
