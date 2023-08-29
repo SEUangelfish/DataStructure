@@ -1,7 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "Allocater.h"
-#include "Algorithm.h"
+#include "Allocator.h"
 #include "Iterator.h"
 
 namespace dsl {
@@ -24,30 +23,12 @@ namespace dsl {
 	public:
 		virtual ~SplaySetNode() = default;
 
-		// 获取键
-		// 尾节点无键、值
-		_KTy& Key() {
-#ifdef EXCEPTION_DETECTION
-			if (this->end) throw exception("object of SplaySetNode: end iterator by Key()");
-#endif // EXCEPTION_DETECTION
-			return this->key;
-		}
-
-		// 判断是否是尾节点
-		bool End() {
-			return this->end;
-		}
-
-	protected:
 		// 默认构造
 		SplaySetNode() = default;
 		// 初始化键
 		SplaySetNode(const _KTy& _key) :key(_key) {}
 		// 初始化键
 		SplaySetNode(_KTy&& _key) :key(std::move(_key)) {}
-		// 初始化键
-		template<typename... _TpArgs>
-		SplaySetNode(_TpArgs&&... keyInits) : key(std::forward<_TpArgs>(keyInits)...) {}
 
 		// 拷贝构造
 		SplaySetNode(const _Node& cp) :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(cp.key), end(cp.end) {}
@@ -69,6 +50,20 @@ namespace dsl {
 			return *this;
 		}
 
+		// 获取键
+// 尾节点无键、值
+		_KTy& Key() {
+#ifdef EXCEPTION_DETECTION
+			if (this->end) throw exception("object of SplaySetNode: end iterator by Key()");
+#endif // EXCEPTION_DETECTION
+			return this->key;
+		}
+
+		// 判断是否是尾节点
+		bool End() {
+			return this->end;
+		}
+
 	protected:
 		// 父节点
 		_Node* fa = nullptr;
@@ -83,17 +78,19 @@ namespace dsl {
 
 	// 伸展树根类	
 	// _Node		节点类型
-	// _Cmpr		比较器
-	// _Alloc		分配器
+	// _Cmpr		比较器类型
+	// _Alloc		分配器类型
 	template<typename _Node, typename _Cmpr, typename _Alloc>
 	class SplayTree {
 	public:
-		// 迭代器类型
-		using Iterator = SplayTreeIterator<SplayTree<_Node, _Cmpr, _Alloc>>;
-		// 供迭代器使用的通用类型
+		// 元素类型
 		using _ElemType = _Node;
+		// 分配器类型
+		using _ElemAlloc = _Alloc;
 		// 键类型
-		using _KTy = _Node::_KTy;
+		using _KTy = typename _Node::_KTy;
+		// 迭代器类型
+		using Iterator = SplayTreeIterator<SplayTree<_ElemType, _Cmpr, _ElemAlloc>>;
 
 	protected:
 		// 向上维护
@@ -140,8 +137,7 @@ namespace dsl {
 	public:
 		// 默认构造：添加尾节点
 		SplayTree() : root(this->alloc.New(1)) {
-			// 不直接调用构造函数，键值对可能没有默认构造函数
-			this->root->fa = this->root->ch[0] = this->root->ch[1] = nullptr;
+			new (this->root) _ElemType;
 			this->root->end = true;
 		};
 
@@ -205,6 +201,7 @@ namespace dsl {
 					this->root->fa = this->root->ch[0] = nullptr;
 				}
 			}
+			this->size = 0;
 		}
 
 		// 元素个数
@@ -223,11 +220,6 @@ namespace dsl {
 			this->Splay(u);
 			return u;
 		}
-		// 功能与Begin相同
-		// 适应C++的基本范围for循环
-		Iterator begin() {
-			return this->Begin();
-		}
 
 		// 返回尾迭代器
 		Iterator End() {
@@ -235,11 +227,6 @@ namespace dsl {
 			while (u->ch[1]) u = u->ch[1];
 			this->Splay(u);
 			return u;
-		}
-		// 功能与End相同
-		// 适应C++的基本范围for循环
-		Iterator end() {
-			return this->End();
 		}
 
 		// 通过键查询值
@@ -312,13 +299,6 @@ namespace dsl {
 			return suc;
 		}
 
-		// 返回第一个大于key的节点，相当于查询后继节点
-		// key：键
-		// 不存在则返回尾迭代器
-		Iterator UpperBound(const _KTy& key) {
-			return this->Successor(key);
-		}
-
 		// 插入函数
 		// key：键
 		// 返回值同Emplace
@@ -354,13 +334,13 @@ namespace dsl {
 		template<typename... _Args>
 		std::pair<Iterator, bool> Emplace(_Args&&... args) {
 			_Node* pre = nullptr, * u = this->root, * v = this->alloc.New(1);
-			new (v) _Node(std::forward<_Args>(args)...);
+
+			new (v) _Node(_KTy(std::forward<_Args>(args)...));
 
 			while (u) {
 				if (this->operator()(*u, *v) == this->operator()(*v, *u)) {
 					this->alloc.Free(v, 1);
 					this->Splay(u);
-					++this->size;
 					return std::make_pair(u, false);
 				}
 				pre = u;
@@ -405,7 +385,7 @@ namespace dsl {
 
 	protected:
 		// 分配器
-		_Alloc alloc;
+		_ElemAlloc alloc;
 		// 比较器
 		_Cmpr cpr;
 		// 根结点

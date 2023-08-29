@@ -4,9 +4,9 @@
 namespace dsl {
 	template<typename _DSTy>
 	class Iterator {
-	protected:
+	public:
 		// 结构中元素类型
-		using _ElemType = _DSTy::_ElemType;
+		using _ElemType = typename _DSTy::_ElemType;
 
 	public:
 		// 默认构造
@@ -29,7 +29,9 @@ namespace dsl {
 		// 自减
 		virtual Iterator& operator--() = 0;
 		// 判等
-		ptrdiff_t operator==(const Iterator& cpr) { return this->src == cpr.src; }
+		bool operator==(const Iterator& cpr) { return this->src == cpr.src; }
+		// 不等
+		bool operator!=(const Iterator& cpr) { return this->src != cpr.src; }
 		// 解引用
 		_ElemType& operator*() { return *this->src; }
 		// 指针
@@ -50,11 +52,15 @@ namespace dsl {
 		template<typename _Node, typename _Cmpr, typename _Alloc>
 		friend class SplayTree;
 	public:
+		// 结构中元素类型
+		using _ElemType = typename _DSTy::_ElemType;
+
+	public:
 		// 默认构造
 		SplayTreeIterator() = default;
 		// 带参构造
 		// _src：源数据指针
-		SplayTreeIterator(Iterator<_DSTy>::_ElemType* _src) : Iterator<_DSTy>(_src) {}
+		SplayTreeIterator(_ElemType* _src) : Iterator<_DSTy>(_src) {}
 		// 拷贝构造
 		SplayTreeIterator(const SplayTreeIterator& cp) : Iterator<_DSTy>(cp) {}
 		// 移动构造
