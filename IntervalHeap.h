@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "Allocater.h"
+#include "Allocator.h"
 #include "Algorithm.h"
 
 #define L		first
@@ -11,9 +11,13 @@ namespace dsl {
 	// _Ty			元素类型
 	// LessTag		比较器标志(若采用大于比较器则置true)
 	// _Cmpr		比较器(默认采用小于比较器)
-	// _Alloc		内存分配器类型
-	template<typename _Ty, bool LessTag = false, typename _Cmpr = std::less<_Ty>, typename _Alloc = dsl::Allocater<_Ty>>
+	// _Alloc		分配器模板
+	template<typename _Ty, bool LessTag = false, typename _Cmpr = std::less<_Ty>,template<typename> typename _Alloc = dsl::Allocator>
 	class IntervalHeap {
+	public:
+		// 元素分配器类型
+		using _ElemAlloc = _Alloc<_Ty>;
+
 	protected:
 		// 实际使用的比较器
 		struct Cmpr
@@ -157,13 +161,13 @@ namespace dsl {
 		// _cpr：比较器
 		IntervalHeap(_Cmpr&& _cpr) :cpr{ std::move(_cpr) } {}
 		// _alloc：分配器
-		IntervalHeap(_Alloc&& _alloc) :alloc(std::forward<_Alloc>(_alloc)) {}
+		IntervalHeap(_ElemAlloc&& _alloc) :alloc(std::forward<_ElemAlloc>(_alloc)) {}
 		// _cpr：比较器
 		// _alloc：分配器
-		IntervalHeap(const _Cmpr& _cpr, _Alloc&& _alloc) :cpr{ _cpr }, alloc(std::forward<_Alloc>(_alloc)) {}
+		IntervalHeap(const _Cmpr& _cpr, _ElemAlloc&& _alloc) :cpr{ _cpr }, alloc(std::forward<_ElemAlloc>(_alloc)) {}
 		// _cpr：比较器
 		// _alloc：分配器
-		IntervalHeap(_Cmpr&& _cpr, _Alloc&& _alloc) :cpr{ std::move(_cpr) }, alloc(std::forward<_Alloc>(_alloc)) {}
+		IntervalHeap(_Cmpr&& _cpr, _ElemAlloc&& _alloc) :cpr{ std::move(_cpr) }, alloc(std::forward<_ElemAlloc>(_alloc)) {}
 		// 浅拷贝(小心使用，注意析构问题)
 		IntervalHeap(const IntervalHeap& cp, bool Shallowcopy) :cpr{ cp.cpr }, alloc(cp.alloc), src(cp.src), size(cp.size), capacity(cp.capacity) {}
 		// 拷贝构造(深拷贝)
@@ -203,7 +207,7 @@ namespace dsl {
 		// ed：尾元素的下一个位置
 		// _alloc：分配器
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, _Alloc&& _alloc) :IntervalHeap(std::forward<_Alloc>(_alloc)) {
+		IntervalHeap(_Init st, _Init ed, _ElemAlloc&& _alloc) :IntervalHeap(std::forward<_ElemAlloc>(_alloc)) {
 			this->BuildHeap(st, ed);
 		}
 		// 批构造
@@ -212,7 +216,7 @@ namespace dsl {
 		// _cpr：比较器
 		// _alloc：分配器
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, const _Cmpr& _cpr, _Alloc&& _alloc) :IntervalHeap(_cpr, std::forward<_Alloc>(_alloc)) {
+		IntervalHeap(_Init st, _Init ed, const _Cmpr& _cpr, _ElemAlloc&& _alloc) :IntervalHeap(_cpr, std::forward<_ElemAlloc>(_alloc)) {
 			this->BuildHeap(st, ed);
 		}
 		// 批构造
@@ -221,7 +225,7 @@ namespace dsl {
 		// _cpr：比较器
 		// _alloc：分配器
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, _Cmpr&& _cpr, _Alloc&& _alloc) :IntervalHeap(std::move(_cpr), std::forward<_Alloc>(_alloc)) {
+		IntervalHeap(_Init st, _Init ed, _Cmpr&& _cpr, _ElemAlloc&& _alloc) :IntervalHeap(std::move(_cpr), std::forward<_ElemAlloc>(_alloc)) {
 			this->BuildHeap(st, ed);
 		}
 
@@ -416,7 +420,7 @@ namespace dsl {
 		// 比较器
 		Cmpr cpr;
 		// 分配器
-		_Alloc alloc;
+		_ElemAlloc alloc;
 		// 源数据地址
 		// 每个结点是一对数据，左小右大
 		_Ty* src = nullptr;
