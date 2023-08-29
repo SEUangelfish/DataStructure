@@ -36,7 +36,8 @@ namespace dsl {
 		_ElemType& operator*() { return *this->src; }
 		// 指针
 		_ElemType* operator->() { return this->src; }
-
+		// 源数据指针
+		_ElemType* Source() { return this->src; }
 
 	protected:
 		// 源数据指针

@@ -31,37 +31,19 @@ namespace dsl {
 		SplaySetNode(_KTy&& _key) :key(std::move(_key)) {}
 
 		// 拷贝构造
-		SplaySetNode(const _Node& cp) :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(cp.key), end(cp.end) {}
+		SplaySetNode(const _Node& cp) :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(cp.key){}
 		// 移动构造
-		SplaySetNode(_Node&& cp) noexcept :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(std::move(cp.key)), end(cp.end) {
+		SplaySetNode(_Node&& cp) noexcept :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(std::move(cp.key)){
 			memset(&cp, sizeof(_Node), 0);
 		}
 
-		// 赋值
-		_Node& operator=(const _Node& cp) {
-			if (!this->end) this->~SplaySetNode();
-			new (this) SplaySetNode(cp);
-			return *this;
-		}
-		// 移动赋值
-		_Node& operator=(_Node&& cp) noexcept {
-			if (!this->end) this->~SplaySetNode();
-			new (this) SplaySetNode(std::move(cp));
-			return *this;
-		}
+		_Node& operator=(const _Node& cp) = delete;
+		_Node& operator=(_Node&& cp) = delete;
 
 		// 获取键
-// 尾节点无键、值
+		// 尾节点无键、值
 		_KTy& Key() {
-#ifdef EXCEPTION_DETECTION
-			if (this->end) throw exception("object of SplaySetNode: end iterator by Key()");
-#endif // EXCEPTION_DETECTION
 			return this->key;
-		}
-
-		// 判断是否是尾节点
-		bool End() {
-			return this->end;
 		}
 
 	protected:
@@ -72,8 +54,6 @@ namespace dsl {
 		_Node* ch[2]{ nullptr, nullptr };
 		// 键
 		_KTy key;
-		// 哨兵节点标记
-		bool end = false;
 	};
 
 	// 伸展树根类	
@@ -136,22 +116,22 @@ namespace dsl {
 
 	public:
 		// 默认构造：添加尾节点
-		SplayTree() : root(this->alloc.New(1)) {
+		SplayTree() : root(this->alloc.New(1)), sentry(root) {
 			new (this->root) _ElemType;
-			this->root->end = true;
 		};
 
 		// 虚析构函数
 		virtual ~SplayTree() {
-			std::queue<_Node*> qu;
-			qu.push(this->root);
-			while (qu.size()) {
-				this->root = qu.front();
-				qu.pop();
-				if (this->root->ch[0]) qu.push(this->root->ch[0]);
-				if (this->root->ch[1]) qu.push(this->root->ch[1]);
-				this->alloc.Free(this->root, !this->root->end);
-			}
+			_Node* head = this->root, * tail = this->root, * next;
+
+			while (1) {
+				if (head->ch[0]) tail = tail->fa = head->ch[0];
+				if (head->ch[1]) tail = tail->fa = head->ch[1];
+				next = head->fa;
+				this->alloc.Free(head, head != this->sentry);
+				if (head == tail) break;
+				head = next;
+			};
 		}
 
 		// 核心函数
@@ -171,36 +151,35 @@ namespace dsl {
 
 		// 节点比较运算符
 		// n1 < n2 为真
-		bool operator ()(const _Node& n1, const _Node& n2) {
-			return !n1.end && (n2.end || this->cpr(n1.key, n2.key));
+		bool operator ()(_Node* n1, _Node* n2) {
+			return n1 != this->sentry && (n2 == this->sentry || this->cpr(n1->key, n2->key));
 		}
 		// 节点比较运算符
 		// node < key 为真
-		bool operator ()(const _Node& node, const _KTy& key) {
-			return !node.end && this->cpr(node.key, key);
+		bool operator ()(_Node* node, const _KTy& key) {
+			return node != this->sentry && this->cpr(node->key, key);
 		}
 		// 节点比较运算符
 		// key < node 为真
-		bool operator ()(const _KTy& key, const _Node& node) {
-			return node.end || this->cpr(key, node.key);
+		bool operator ()(const _KTy& key, _Node* node) {
+			return node == this->sentry || this->cpr(key, node->key);
 		}
 
 		// 清空元素
 		void Clear() {
-			std::queue<_Node*> qu;
-			qu.push(this->root);
-			_Node* tmp;
-			while (qu.size()) {
-				tmp = qu.front();
-				qu.pop();
-				if (tmp->ch[0]) qu.push(tmp->ch[0]);
-				if (tmp->ch[1]) qu.push(tmp->ch[1]);
-				if (!tmp->end) this->alloc.Free(tmp, 1);
-				else {
-					this->root = tmp;
-					this->root->fa = this->root->ch[0] = nullptr;
-				}
-			}
+			_Node* head = this->root, * tail = this->root;
+
+			while (1) {
+				if (head->ch[0]) tail = tail->fa = head->ch[0];
+				if (head->ch[1]) tail = tail->fa = head->ch[1];
+				this->root = head->fa;
+				if (head != this->sentry) this->alloc.Free(head, 1);
+				if (head == tail) break;
+				head = this->root;
+			};
+
+			this->root = this->sentry;
+			this->root->fa = this->root->ch[0] = nullptr;
 			this->size = 0;
 		}
 
@@ -223,10 +202,7 @@ namespace dsl {
 
 		// 返回尾迭代器
 		Iterator End() {
-			_Node* u = this->root;
-			while (u->ch[1]) u = u->ch[1];
-			this->Splay(u);
-			return u;
+			return this->sentry;
 		}
 
 		// 通过键查询值
@@ -234,19 +210,18 @@ namespace dsl {
 		// 不存在则返回尾迭代器
 		Iterator Find(const _KTy& key) {
 			_Node* u = this->root;
-			while (u && (this->operator()(*u, key) != this->operator()(key, *u))) u = u->ch[this->operator()(key, *u)];
-			if (!u) return this->End();
-			this->Splay(u);
-			return u;
+			while (u && this->operator()(u, key) != this->operator()(key, u)) u = u->ch[this->operator()(key, u)];
+			this->Splay(u ? u : this->sentry);
+			return this->root;
 		}
 
 		// 查询前驱节点
 		// key：键
 		// 不存在则返回尾迭代器
 		Iterator Precursor(const _KTy& key) {
-			_Node pre = nullptr, u = this->root;
+			_Node* pre = nullptr, * u = this->root;
 			while (u) {
-				if (u < key) {
+				if (this->operator()(u, key)) {
 					// 当前节点可能是前驱节点，向右子树搜索
 					pre = u;
 					u = u->ch[1];
@@ -254,18 +229,17 @@ namespace dsl {
 				// 前驱节点只可能在左子树中
 				else u = u->ch[0];
 			}
-			if (!pre) return this->End();
-			this->Splay(pre);
-			return pre;
+			this->Splay(pre ? pre : this->sentry);
+			return this->root;
 		}
 
 		// 查询后继节点
 		// key：键
 		// 不存在则返回尾迭代器
 		Iterator Successor(const _KTy& key) {
-			_Node suc = nullptr, u = this->root;
+			_Node* suc = nullptr, * u = this->root;
 			while (u) {
-				if (key < u) {
+				if (this->operator()(key, u)) {
 					// 当前节点可能是后继节点，向左子树搜索
 					suc = u;
 					u = u->ch[0];
@@ -281,13 +255,13 @@ namespace dsl {
 		// key：键
 		// 不存在则返回尾迭代器
 		Iterator LowerBound(const _KTy& key) {
-			_Node suc = nullptr, u = this->root;
+			_Node* suc = nullptr, * u = this->root;
 			while (u) {
-				if (u == key) {
+				if (this->operator()(u, key) == this->operator()(key, u)) {
 					this->Splay(u);
-					return Iterator(u);
+					return u;
 				}
-				if (key < u) {
+				if (this->operator()(key, u)) {
 					// 当前节点可能是后继节点，向左子树搜索
 					suc = u;
 					u = u->ch[0];
@@ -338,16 +312,16 @@ namespace dsl {
 			new (v) _Node(_KTy(std::forward<_Args>(args)...));
 
 			while (u) {
-				if (this->operator()(*u, *v) == this->operator()(*v, *u)) {
+				if (this->operator()(u, v) == this->operator()(v, u)) {
 					this->alloc.Free(v, 1);
 					this->Splay(u);
 					return std::make_pair(u, false);
 				}
 				pre = u;
-				u = u->ch[this->operator()(*u, *v)];
+				u = u->ch[this->operator()(u, v)];
 			}
 
-			pre->ch[this->operator()(*pre, *v)] = v;
+			pre->ch[this->operator()(pre, v)] = v;
 			v->fa = pre;
 			this->Splay(v);
 			++this->size;
@@ -358,7 +332,7 @@ namespace dsl {
 		// itr：删除节点迭代器
 		void Erase(Iterator itr) {
 #ifdef EXCEPTION_DETECTION
-			if (itr->end || this->Find(itr->key) != itr) throw std::exception("object of SplayTree：invalid iterator by Erase()");
+			if (itr.Source() == this->sentry || this->Find(itr->key).Source() == this->sentry) throw std::exception("object of SplayTree：invalid iterator by Erase()");
 #endif // EXCEPTION_DETECTION
 			this->Splay(*itr);
 			_Node* tmp = this->root;
@@ -371,7 +345,7 @@ namespace dsl {
 		// key：目标节点键
 		// 成功返回true
 		bool Erase(const _KTy& key) {
-			if (this->Find(key)->end) return false;
+			if (this->Find(key).Source() == this->sentry) return false;
 			_Node* tmp = this->root;
 			this->root = this->Combine(this->root->ch[0], this->root->ch[1]);
 			--this->size;
@@ -380,7 +354,7 @@ namespace dsl {
 
 		// 是否包含键key
 		bool Contains(const _KTy& key) {
-			return !this->Find(key)->end;
+			return this->Find(key).Source() != this->sentry;
 		}
 
 	protected:
@@ -390,6 +364,8 @@ namespace dsl {
 		_Cmpr cpr;
 		// 根结点
 		_Node* root;
+		// 哨兵节点
+		_Node* sentry;
 		// 元素个数
 		size_t size = 0;
 	};
