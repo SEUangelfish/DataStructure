@@ -12,7 +12,7 @@ namespace dsl {
 	// LessTag		比较器标志(若采用大于比较器则置true)
 	// _Cmpr		比较器(默认采用小于比较器)
 	// _Alloc		分配器模板
-	template<typename _Ty, bool LessTag = false, typename _Cmpr = std::less<_Ty>,template<typename> typename _Alloc = dsl::Allocator>
+	template<typename _Ty, bool LessTag = false, typename _Cmpr = std::less<_Ty>, template<typename> typename _Alloc = dsl::Allocator>
 	class IntervalHeap {
 	public:
 		// 元素分配器类型
@@ -176,8 +176,7 @@ namespace dsl {
 		}
 		// 移动构造
 		IntervalHeap(IntervalHeap&& mv) noexcept :cpr{ std::move(mv.cpr) }, alloc(std::move(mv.alloc)), src(mv.src), size(mv.size), capacity(mv.capacity) {
-			mv.size = 0;
-			mv.src = nullptr;
+			memset(&mv, 0, sizeof(IntervalHeap));
 		}
 		// 批构造
 		// st：首元素地址
@@ -406,13 +405,13 @@ namespace dsl {
 		}
 
 		// 返回源数据地址
-		_Ty* Data() {
+		_Ty* Source() {
 			return this->src;
 		}
 
 		// 清空元素，不释放资源
 		void Clear() {
-			for (_Ty* st = src, *ed = src + this->size; st != ed; ++st) st->~_Ty();
+			if constexpr (std::is_class<_Ty>::value) for (_Ty* st = src, *ed = src + this->size; st != ed; ++st) st->~_Ty();
 			this->size = 0;
 		}
 

@@ -42,7 +42,5 @@ namespace dsl {
 			return this->Successor(key);
 		}
 
-
-
 	};
 }
