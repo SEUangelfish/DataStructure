@@ -5,7 +5,7 @@
 namespace dsl {
 	// SplayTree with the key as value
 	// _Ty			key type
-	// _Cmpr		comparator type
+	// _Cmpr		comparator type of key
 	// _Alloc		allocator template
 	template<typename _Ty, typename _Cmpr = std::less<_Ty>, template<typename> typename _Alloc = RecycleAllocator>
 	class SplaySet :public SplayTree<SplaySetNode<_Ty>, _Cmpr, _Alloc<SplaySetNode<_Ty>>> {
