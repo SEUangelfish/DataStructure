@@ -1,17 +1,17 @@
 #pragma once
 #include "pch.h"
 
-// Allocators of DSL container must have New() and Free() functions
-// The parameter list and return value must be the same as Allocator<_Ty>
-// The reason for not using polymorphism is to increase efficiency
+// allocators of DSL container must have New() and Free() functions
+// the parameter list and return value must be the same as Allocator<_Ty>
+// the reason for not using polymorphism is to increase efficiency
 
 namespace dsl {
 
 	template<typename _Ty>
 	class Allocator {
 	public:
-		// Resources request function
-		// No initialization operation is performed
+		// resources request function
+		// no initialization operation is performed
 		// cnt: number of elements
 		// return: heap resourse pointer of type _Ty
 		_Ty* New(size_t cnt) {
@@ -22,8 +22,8 @@ namespace dsl {
 			return res;
 		}
 
-		// Release resources
-		// Class types are destructed
+		// release resources
+		// class types are destructed
 		// size: number of elements to be destructed
 		void Free(_Ty* src, size_t size) {
 			if constexpr (std::is_class<_Ty>::value) for (_Ty* st = src, *ed = src + size; st != ed; ++st) st->~_Ty();
@@ -31,8 +31,8 @@ namespace dsl {
 		}
 	};
 
-	// This allocator stores discarded memory and prioritizes reclaimed resources when requesting resources
-	// All resources are released when the allocator is destroyed
+	// this allocator stores discarded memory and prioritizes reclaimed resources when requesting resources
+	// all resources are released when the allocator is destroyed
 	// tip: This allocator is suitable for chaom containers
 	//		The number of elements allocated and destroyed each time should be as 1 as possible, otherwise it will cause memory waste 
 	// tip: An individual element size should be greater than or equal to the size of one pointer
@@ -68,8 +68,8 @@ namespace dsl {
 			}
 		}
 
-		// Resources request function
-		// No initialization operation is performed
+		// resources request function
+		// no initialization operation is performed
 		// cnt(as 1 as possible): number of elements
 		// return: heap resourse pointer of type _Ty
 		_Ty* New(size_t cnt) {
@@ -87,8 +87,8 @@ namespace dsl {
 			return res;
 		}
 
-		// Release resources
-		// Class types are destructed
+		// release resources
+		// class types are destructed
 		// size: number of elements to be destructed
 		void Free(_Ty* src, size_t size) {
 			if constexpr (std::is_class<_Ty>::value)  for (_Ty* st = src, *ed = src + size; st != ed; ++st) st->~_Ty();
