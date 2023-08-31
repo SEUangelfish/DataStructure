@@ -1,6 +1,7 @@
 # DataStructureLibrary
-this warehouse contains some useful data structures not available in STL. All of them are implemented by C++ generic programming. 
+this warehouse contains some useful data structures unavailable in STL. All of them are implemented by C++ generic programming. 
 
-below are data structures which have been implemented and tested for availability：
-1. IntervalHeap  # also know as double-ended heap providing both maximum and minimum query online with the time complexity of O(logn)
-2. SplaySet # similar to std::set, but based on SplayTree
+below are data structures which have been implemented and tested for availability: 
+1. IntervalHeap  # It is an extension of the general heap structure. It can query both maximum and minimum in O(lgn).
+2. SplaySet # Its function is similar to set in stl. However, it is based on SplayTree which performs better in memory saving and can be extended to more functions.
+3.          # It is recommended to use RecycleAllocator as his allocator.
