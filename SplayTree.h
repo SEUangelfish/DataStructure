@@ -17,7 +17,7 @@ namespace dsl {
 		using _Node = SplaySetNode<_KTy>;
 
 	public:
-		virtual ~SplaySetNode() = default;
+		~SplaySetNode() = default;
 
 		SplaySetNode() = default;
 		SplaySetNode(const _KTy& _key) :key(_key) {}
@@ -87,7 +87,8 @@ namespace dsl {
 
 	public:
 		SplayTree() : root(this->alloc.New(1)), sentry(root) {
-			new (this->root) _ElemType;
+			// attention: sentry node do not call construction and destructor
+			memset(this->root, 0, sizeof(_Node));
 		};
 
 		virtual ~SplayTree() {
@@ -172,7 +173,7 @@ namespace dsl {
 		// return End() if such node do not exist 
 		Iterator Find(const _KTy& key) {
 			_Node* u = this->root;
-			while (u && this->operator()(u, key) != this->operator()(key, u)) u = u->ch[this->operator()(key, u)];
+			while (u && this->operator()(u, key) != this->operator()(key, u)) u = u->ch[this->operator()(u, key)];
 			this->Splay(u ? u : this->sentry);
 			return this->root;
 		}
