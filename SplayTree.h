@@ -3,6 +3,8 @@
 #include "Allocator.h"
 #include "Iterator.h"
 
+#define DEPTH_THRESHOULD		32u
+
 namespace dsl {
 	template<typename _Key>
 	class SplaySetNode {
@@ -118,6 +120,25 @@ namespace dsl {
 			if (!fa) this->root = x;
 		}
 
+		// limit: maximum number of rotate
+		void Splay(_Node* x, size_t limit) {
+			if (!limit) return;
+			while (x->fa) {
+				_Node* y = x->fa, * z = y->fa;
+				if (z) {
+					if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
+					else this->Rotate(x);
+					if (!--limit) {
+						if (!x->fa->fa) this->root = x->fa;
+						return;
+					}
+				}
+				this->Rotate(x);
+				if (!--limit) break;
+			}
+			if (!x->fa) this->root = x;
+		}
+
 		// node comparison operator
 		// ture if n1 < n2 
 		bool operator ()(_Node* n1, _Node* n2) {
@@ -160,8 +181,12 @@ namespace dsl {
 
 		Iterator Begin() {
 			_Node* u = this->root;
-			while (u->ch[0]) u = u->ch[0];
-			this->Splay(u);
+			size_t dep = 0;
+			while (u->ch[0]) {
+				u = u->ch[0];
+				++dep;
+			}
+			if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
 			return u;
 		}
 
@@ -173,38 +198,48 @@ namespace dsl {
 		// return End() if such node do not exist 
 		Iterator Find(const _KTy& key) {
 			_Node* u = this->root;
-			while (u && this->operator()(u, key) != this->operator()(key, u)) u = u->ch[this->operator()(u, key)];
-			this->Splay(u ? u : this->sentry);
-			return this->root;
+			size_t dep = 0;
+			while (u && this->operator()(u, key) != this->operator()(key, u)) {
+				u = u->ch[this->operator()(u, key)];
+				++dep;
+			}
+			if (!u) u = this->sentry;
+			if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
+			return u;
 		}
 
 		// precursor of key
 		// return End() if such node do not exist 
 		Iterator Precursor(const _KTy& key) {
 			_Node* pre = nullptr, * u = this->root;
+			size_t dep = 0;
 			while (u) {
 				if (this->operator()(u, key)) {
 					pre = u;
 					u = u->ch[1];
 				}
 				else u = u->ch[0];
+				++dep;
 			}
-			this->Splay(pre ? pre : this->sentry);
-			return this->root;
+			if (!pre) pre = this->sentry;
+			if (dep > DEPTH_THRESHOULD) this->Splay(pre, dep - DEPTH_THRESHOULD);
+			return pre;
 		}
 
 		// successor of key
 		// return End() if such node do not exist 
 		Iterator Successor(const _KTy& key) {
 			_Node* suc = nullptr, * u = this->root;
+			size_t dep = 0;
 			while (u) {
 				if (this->operator()(key, u)) {
 					suc = u;
 					u = u->ch[0];
 				}
 				else u = u->ch[1];
+				++dep;
 			}
-			this->Splay(suc);
+			if (dep > DEPTH_THRESHOULD) this->Splay(suc, dep - DEPTH_THRESHOULD);
 			return suc;
 		}
 
@@ -212,9 +247,10 @@ namespace dsl {
 		// return End() if such node do not exist 
 		Iterator LowerBound(const _KTy& key) {
 			_Node* suc = nullptr, * u = this->root;
+			size_t dep = 0;
 			while (u) {
 				if (this->operator()(u, key) == this->operator()(key, u)) {
-					this->Splay(u);
+					if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
 					return u;
 				}
 				if (this->operator()(key, u)) {
@@ -222,8 +258,9 @@ namespace dsl {
 					u = u->ch[0];
 				}
 				else u = u->ch[1];
+				++dep;
 			}
-			this->Splay(suc);
+			if (dep > DEPTH_THRESHOULD) this->Splay(suc, dep - DEPTH_THRESHOULD);
 			return suc;
 		}
 
@@ -254,20 +291,22 @@ namespace dsl {
 			_Node* pre = nullptr, * u = this->root, * v = this->alloc.New(1);
 
 			new (v) _Node(_KTy(std::forward<_Args>(args)...));
+			size_t dep = 0;
 
 			while (u) {
 				if (this->operator()(u, v) == this->operator()(v, u)) {
 					this->alloc.Free(v, 1);
-					this->Splay(u);
+					if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
 					return std::make_pair(u, false);
 				}
 				pre = u;
 				u = u->ch[this->operator()(u, v)];
+				++dep;
 			}
 
 			pre->ch[this->operator()(pre, v)] = v;
 			v->fa = pre;
-			this->Splay(v);
+			if (dep > DEPTH_THRESHOULD) this->Splay(v, dep - DEPTH_THRESHOULD);
 			++this->size;
 			return std::make_pair(v, true);
 		}
@@ -284,11 +323,12 @@ namespace dsl {
 		}
 
 		bool Erase(const _KTy& key) {
-			if (this->Find(key).Source() == this->sentry) return false;
-			_Node* tmp = this->root;
+			_Node* x = this->Find(key).Source();
+			if (x == this->sentry) return false;
+			this->Splay(x);
 			this->root = this->Combine(this->root->ch[0], this->root->ch[1]);
 			--this->size;
-			this->alloc.Free(tmp, 1);
+			this->alloc.Free(x, 1);
 		}
 
 		bool Contains(const _KTy& key) {
