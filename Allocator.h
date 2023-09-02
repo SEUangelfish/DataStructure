@@ -46,12 +46,22 @@ namespace dsl {
 
 	public:
 		RecycleAllocator() = default;
-		RecycleAllocator(const RecycleAllocator& cp) = delete;
+
+		RecycleAllocator(const RecycleAllocator& cp) {
+#ifdef WARNING_DETECTION
+			std::cerr << "warning: RecycleAllocator should not be copied" << std::endl;
+#endif // WARNING_DETECTION
+		};
+
 		RecycleAllocator(RecycleAllocator&& mv) noexcept :head(mv.head) {
 			memset(&mv, 0, sizeof(RecycleAllocator));
 		}
 
-		RecycleAllocator& operator=(const RecycleAllocator& cp) = delete;
+		RecycleAllocator& operator=(const RecycleAllocator& cp) {
+#ifdef WARNING_DETECTION
+			std::cerr << "warning: RecycleAllocator should not be copied" << std::endl;
+#endif // WARNING_DETECTION
+		};
 		RecycleAllocator& operator=(RecycleAllocator&& cp) noexcept {
 			this->~RecycleAllocator();
 			new (this) RecycleAllocator(std::move(cp));
@@ -79,13 +89,13 @@ namespace dsl {
 					this->head = this->head->next;
 					return res;
 				}
-			}
+				}
 			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
 			return res;
-		}
+			}
 
 		// release resources
 		// class types are destructed
@@ -102,7 +112,7 @@ namespace dsl {
 
 	protected:
 		Block* head = nullptr;
-	};
+		};
 
 
-}
+	}

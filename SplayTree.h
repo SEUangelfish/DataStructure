@@ -94,6 +94,8 @@ namespace dsl {
 		};
 
 		virtual ~SplayTree() {
+			if (!this->root) return;
+
 			_Node* head = this->root, * tail = this->root, * next;
 
 			while (1) {

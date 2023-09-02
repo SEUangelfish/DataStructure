@@ -142,17 +142,17 @@ namespace dsl {
 
 	public:
 		IntervalHeap() = default;
-		IntervalHeap(const _Cmpr& _cpr) :cpr{ _cpr } {}
-		IntervalHeap(_Cmpr&& _cpr) :cpr{ std::move(_cpr) } {}
-		IntervalHeap(_ElemAlloc&& _alloc) :alloc(std::forward<_ElemAlloc>(_alloc)) {}
-		IntervalHeap(const _Cmpr& _cpr, _ElemAlloc&& _alloc) :cpr{ _cpr }, alloc(std::forward<_ElemAlloc>(_alloc)) {}
-		IntervalHeap(_Cmpr&& _cpr, _ElemAlloc&& _alloc) :cpr{ std::move(_cpr) }, alloc(std::forward<_ElemAlloc>(_alloc)) {}
+		explicit IntervalHeap(const _Cmpr& _cpr) :cpr(_cpr) {}
+		explicit IntervalHeap(const _ElemAlloc& _alloc) :alloc(_alloc) {}
+		explicit IntervalHeap(_ElemAlloc&& _alloc) :alloc(std::move(_alloc)) {}
+		IntervalHeap(const _Cmpr& _cpr, const _ElemAlloc& _alloc) :cpr(_cpr), alloc(_alloc) {}
+		IntervalHeap(const _Cmpr& _cpr, _ElemAlloc&& _alloc) :cpr(_cpr), alloc(std::move(_alloc)) {}
 		// attention: shallow copy!
-		IntervalHeap(const IntervalHeap& cp, bool Shallowcopy) :cpr{ cp.cpr }, alloc(cp.alloc), src(cp.src), size(cp.size), capacity(cp.capacity) {}
-		IntervalHeap(const IntervalHeap& cp) : cpr{ cp.cpr }, alloc(cp.alloc), src(alloc.New(cp.capacity)), size(cp.size), capacity(cp.capacity) {
+		IntervalHeap(const IntervalHeap& cp, bool Shallowcopy) :cpr(cp.cpr), alloc(cp.alloc), src(cp.src), size(cp.size), capacity(cp.capacity) {}
+		IntervalHeap(const IntervalHeap& cp) : cpr(cp.cpr), alloc(cp.alloc), src(alloc.New(cp.capacity)), size(cp.size), capacity(cp.capacity) {
 			std::copy_n(cp.src, cp.size, this->src);
 		}
-		IntervalHeap(IntervalHeap&& mv) noexcept :cpr{ std::move(mv.cpr) }, alloc(std::move(mv.alloc)), src(mv.src), size(mv.size), capacity(mv.capacity) {
+		IntervalHeap(IntervalHeap&& mv) noexcept :cpr(std::move(mv.cpr)), alloc(std::move(mv.alloc)), src(mv.src), size(mv.size), capacity(mv.capacity) {
 			memset(&mv, 0, sizeof(IntervalHeap));
 		}
 		template<typename _Init>
@@ -164,21 +164,22 @@ namespace dsl {
 			this->BuildHeap(st, ed);
 		}
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, _Cmpr&& _cpr) : IntervalHeap(std::move(_cpr)) {
+		IntervalHeap(_Init st, _Init ed, const _ElemAlloc& _alloc) : IntervalHeap(_alloc) {
 			this->BuildHeap(st, ed);
 		}
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, _ElemAlloc&& _alloc) : IntervalHeap(std::forward<_ElemAlloc>(_alloc)) {
+		IntervalHeap(_Init st, _Init ed, _ElemAlloc&& _alloc) : IntervalHeap(std::move(_alloc)) {
 			this->BuildHeap(st, ed);
 		}
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, const _Cmpr& _cpr, _ElemAlloc&& _alloc) : IntervalHeap(_cpr, std::forward<_ElemAlloc>(_alloc)) {
+		IntervalHeap(_Init st, _Init ed, const _Cmpr& _cpr, const _ElemAlloc& _alloc) : IntervalHeap(_cpr, _alloc) {
 			this->BuildHeap(st, ed);
 		}
 		template<typename _Init>
-		IntervalHeap(_Init st, _Init ed, _Cmpr&& _cpr, _ElemAlloc&& _alloc) : IntervalHeap(std::move(_cpr), std::forward<_ElemAlloc>(_alloc)) {
+		IntervalHeap(_Init st, _Init ed, const _Cmpr& _cpr, _ElemAlloc&& _alloc) : IntervalHeap(_cpr, std::move(_alloc)) {
 			this->BuildHeap(st, ed);
 		}
+
 		IntervalHeap(std::initializer_list<_Ty> lst) :IntervalHeap(lst.begin(), lst.end()) {}
 
 		IntervalHeap& operator= (const IntervalHeap& cp) {
