@@ -315,20 +315,24 @@ namespace dsl {
 #ifdef EXCEPTION_DETECTION
 			if (itr.Source() == this->sentry || this->Find(itr->key).Source() == this->sentry) throw std::exception("object of SplayTree£ºinvalid iterator by Erase()");
 #endif // EXCEPTION_DETECTION
-			this->Splay(*itr);
-			_Node* tmp = this->root;
-			this->root = this->Combine(this->root->ch[0], this->root->ch[1]);
+			_Node* tmp = this->Combine(itr->ch[0], itr->ch[1]);
+			if (tmp) tmp->fa = itr->fa;
+			if (itr->fa) itr->fa->ch[this->operator()(itr->fa, itr.Source())] = tmp;
+			else this->root = tmp;
 			--this->size;
-			this->alloc.Free(tmp, 1);
+			this->alloc.Free(itr.Source(), 1);
 		}
 
 		bool Erase(const _KTy& key) {
 			_Node* x = this->Find(key).Source();
 			if (x == this->sentry) return false;
-			this->Splay(x);
-			this->root = this->Combine(this->root->ch[0], this->root->ch[1]);
+			_Node* tmp = this->Combine(x->ch[0], x->ch[1]);
+			if (tmp) tmp->fa = x->fa;
+			if (x->fa) x->fa->ch[this->operator()(x->fa, key)] = tmp;
+			else this->root = tmp;
 			--this->size;
 			this->alloc.Free(x, 1);
+			return true;
 		}
 
 		bool Contains(const _KTy& key) {
