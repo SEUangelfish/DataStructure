@@ -1,6 +1,5 @@
 #pragma once
 #include "SplayTree.h"
-#include "Allocator.h"
 
 namespace dsl {
 	// SplayTree with the key as value

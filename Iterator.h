@@ -1,6 +1,8 @@
 #pragma once
 #include "pch.h"
 
+#define DEPTH_THRESHOULD		32u
+
 namespace dsl {
 	template<typename _DSTy>
 	class Iterator {
@@ -63,7 +65,9 @@ namespace dsl {
 				while (this->src == this->src->fa->ch[1]) this->src = this->src->fa;
 				this->src = this->src->fa;
 			}
-			this->tree->Splay(this->src);
+			_ElemType* tmp = this->src;
+			for (unsigned i = 0; i < DEPTH_THRESHOULD && tmp->fa; ++i) tmp = tmp->fa;
+			this->tree->Splay(tmp);
 			return *this;
 		};
 
@@ -82,7 +86,10 @@ namespace dsl {
 				while (this->src->fa && this->src == this->src->fa->ch[0]) this->src = this->src->fa;
 				this->src = this->src->fa;
 			}
-			this->tree->Splay(this->src);
+
+			_ElemType* tmp = this->src;
+			for (unsigned i = 0; i < DEPTH_THRESHOULD && tmp->fa; ++i) tmp = tmp->fa;
+			this->tree->Splay(tmp);
 			return *this;
 		};
 

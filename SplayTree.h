@@ -1,9 +1,6 @@
 #pragma once
-#include "pch.h"
 #include "Allocator.h"
 #include "Iterator.h"
-
-#define DEPTH_THRESHOULD		32u
 
 namespace dsl {
 	template<typename _Key>
