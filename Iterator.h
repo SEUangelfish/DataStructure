@@ -11,9 +11,6 @@ namespace dsl {
 		Iterator() = default;
 		Iterator(_ElemType* _src) : src(_src) {}
 		Iterator(const Iterator& cp) : src(cp.src) {}
-		Iterator(Iterator&& mv) noexcept :src(mv.src) {
-			memset(&mv, 0, sizeof(Iterator<_DSTy>));
-		}
 
 		virtual ~Iterator() {}
 
@@ -43,21 +40,20 @@ namespace dsl {
 		friend class SplayTree;
 	public:
 		using _ElemType = typename _DSTy::_ElemType;
+		using Iterator = Iterator<_DSTy>;
 
 	public:
 		SplayTreeIterator() = default;
-		SplayTreeIterator(_ElemType* _src) : Iterator<_DSTy>(_src) {}
-		SplayTreeIterator(const SplayTreeIterator& cp) : Iterator<_DSTy>(cp) {}
-		SplayTreeIterator(SplayTreeIterator&& mv) noexcept :Iterator<_DSTy>(std::move(mv)) {
-			memset(&mv, 0, sizeof(SplayTreeIterator));
-		}
+		SplayTreeIterator(_ElemType* _src, _DSTy* _tree) : Iterator(_src), tree(_tree) {}
+		SplayTreeIterator(const SplayTreeIterator& cp) : Iterator(cp), tree(cp.tree) {}
+
 		virtual ~SplayTreeIterator() {}
 
 		// shift to successor
-		Iterator<_DSTy>& operator++() {
+		Iterator& operator++() {
 #ifdef EXCEPTION_DETECTION
-			if (!this->src) throw exception("object of SplayTree iterator£ºinvalid operation by ++ (null pointer of source data)");
-			if (this->src->end) throw exception("object of SplayTree iterator£ºcan't be ++ any more");
+			if (!this->src || !this->tree) throw std::exception("object of SplayTree iterator: invalid operation by ++ (null pointer of source data)");
+			if (*this == this->tree->End()) throw std::exception("object of SplayTree iterator: can't be ++ any more");
 #endif // EXCEPTION_DETECTION
 			if (this->src->ch[1]) {
 				this->src = this->src->ch[1];
@@ -67,19 +63,15 @@ namespace dsl {
 				while (this->src == this->src->fa->ch[1]) this->src = this->src->fa;
 				this->src = this->src->fa;
 			}
+			this->tree->Splay(this->src);
 			return *this;
 		};
 
-		// shift to successor then splay to the root
-		Iterator<_DSTy>& Next(_DSTy& tree) {
-			this->operator++();
-			tree.Splay(this->src);
-		}
-
 		// shift to precursor
-		Iterator<_DSTy>& operator--() {
+		Iterator& operator--() {
 #ifdef EXCEPTION_DETECTION
-			if (!this->src) throw exception("object of SplayTree iterator£ºinvalid operation by -- (null pointer of source data)");
+			if (!this->src || !this->tree) throw std::exception("object of SplayTree iterator: invalid operation by -- (null pointer of source data)");
+			if (*this == this->tree->Begin()) throw std::exception("object of SplayTree iterator: can't be -- any more");
 #endif // EXCEPTION_DETECTION
 
 			if (this->src->ch[0]) {
@@ -88,18 +80,13 @@ namespace dsl {
 			}
 			else {
 				while (this->src->fa && this->src == this->src->fa->ch[0]) this->src = this->src->fa;
-#ifdef EXCEPTION_DETECTION
-				if (!this->src->fa) throw exception("object of SplayTree iterator£ºcan't be -- any more");
-#endif // EXCEPTION_DETECTION
 				this->src = this->src->fa;
 			}
+			this->tree->Splay(this->src);
 			return *this;
 		};
-		// shift to precursor then splay to the root
-		Iterator<_DSTy>& Prev(_DSTy& tree) {
-			this->operator--();
-			tree.Splay(this->src);
-		}
 
+	protected:
+		_DSTy* tree = nullptr;
 	};
 }

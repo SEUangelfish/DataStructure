@@ -12,7 +12,7 @@ namespace dsl {
 	public:
 		using _Node = SplaySetNode<_Ty>;
 		using _KTy = _Ty;
-		
+
 		using _ElemType = _Node;
 		using _ElemAlloc = _Alloc<_ElemType>;
 		using Iterator = SplayTreeIterator<SplayTree<_ElemType, _Cmpr, _ElemAlloc>>;
