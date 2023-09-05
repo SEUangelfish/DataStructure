@@ -25,13 +25,8 @@ namespace dsl {
 		SplaySetNode(const _KTy& _key) :key(_key) {}
 		SplaySetNode(_KTy&& _key) :key(std::move(_key)) {}
 
-		SplaySetNode(const _Node& cp) :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(cp.key) {}
-		SplaySetNode(_Node&& cp) noexcept :fa(cp.fa), ch{ cp.ch[0], cp.ch[1] }, key(std::move(cp.key)) {
-			memset(&cp, sizeof(_Node), 0);
-		}
-
+		SplaySetNode(const _Node& cp) = delete;
 		_Node& operator=(const _Node& cp) = delete;
-		_Node& operator=(_Node&& cp) = delete;
 
 		_KTy& Key() {
 			return this->key;
@@ -93,11 +88,32 @@ namespace dsl {
 			memset(this->root, 0, sizeof(_Node));
 		};
 
+		//SplayTree(const SplayTree& cp) :alloc(cp.alloc), cpr(cp.cpr), size(cp.size) {
+		//	_Node* head = this->root = this->alloc.New(1), *tail = head;
+		//	head->ch[0] = 
+
+		//}
+
+		SplayTree(SplayTree&& mv) noexcept :alloc(std::move(mv.alloc)), cpr(std::move(mv.cpr)), root(mv.root), sentry(mv.sentry), size(mv.size) {
+			memset(&mv, 0, sizeof(SplayTree));
+		}
+
+		SplayTree& operator=(const SplayTree& mv) {
+			this->~SplayTree();
+			new (this) SplayTree(mv);
+			return *this;
+		}
+
+		SplayTree& operator=(SplayTree&& mv)noexcept {
+			this->~SplayTree();
+			new (this) SplayTree(std::move(mv));
+			return *this;
+		}
+
 		virtual ~SplayTree() {
 			if (!this->root) return;
 
 			_Node* head = this->root, * tail = this->root, * next;
-
 			while (1) {
 				if (head->ch[0]) tail = tail->fa = head->ch[0];
 				if (head->ch[1]) tail = tail->fa = head->ch[1];
@@ -109,7 +125,7 @@ namespace dsl {
 		}
 
 		// rotate x to the child of fa
-		// rotate x to the root if fa is NULL
+		// rotate x to the root by default
 		void Splay(_Node* x, _Node* fa = nullptr) {
 			while (x->fa != fa) {
 				_Node* y = x->fa, * z = y->fa;
@@ -189,11 +205,11 @@ namespace dsl {
 				++dep;
 			}
 			if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
-			return u;
+			return { u,this };
 		}
 
 		Iterator End() {
-			return this->sentry;
+			return { this->sentry, this };
 		}
 
 		// find node by key
@@ -207,7 +223,7 @@ namespace dsl {
 			}
 			if (!u) u = this->sentry;
 			if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
-			return u;
+			return { u, this };
 		}
 
 		// precursor of key
@@ -225,7 +241,7 @@ namespace dsl {
 			}
 			if (!pre) pre = this->sentry;
 			if (dep > DEPTH_THRESHOULD) this->Splay(pre, dep - DEPTH_THRESHOULD);
-			return pre;
+			return { pre,this };
 		}
 
 		// successor of key
@@ -242,7 +258,7 @@ namespace dsl {
 				++dep;
 			}
 			if (dep > DEPTH_THRESHOULD) this->Splay(suc, dep - DEPTH_THRESHOULD);
-			return suc;
+			return { suc,this };
 		}
 
 		// return the first node >= key
@@ -253,7 +269,7 @@ namespace dsl {
 			while (u) {
 				if (this->operator()(u, key) == this->operator()(key, u)) {
 					if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
-					return u;
+					return { u, this };
 				}
 				if (this->operator()(key, u)) {
 					suc = u;
@@ -263,7 +279,7 @@ namespace dsl {
 				++dep;
 			}
 			if (dep > DEPTH_THRESHOULD) this->Splay(suc, dep - DEPTH_THRESHOULD);
-			return suc;
+			return { suc, this };
 		}
 
 		std::pair<Iterator, bool> Insert(const _KTy& key) {
@@ -299,7 +315,7 @@ namespace dsl {
 				if (this->operator()(u, v) == this->operator()(v, u)) {
 					this->alloc.Free(v, 1);
 					if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
-					return std::make_pair(u, false);
+					return std::make_pair(Iterator(u, this), false);
 				}
 				pre = u;
 				u = u->ch[this->operator()(u, v)];
@@ -310,7 +326,7 @@ namespace dsl {
 			v->fa = pre;
 			if (dep > DEPTH_THRESHOULD) this->Splay(v, dep - DEPTH_THRESHOULD);
 			++this->size;
-			return std::make_pair(v, true);
+			return std::make_pair(Iterator(v, this), true);
 		}
 
 		void Erase(Iterator itr) {
