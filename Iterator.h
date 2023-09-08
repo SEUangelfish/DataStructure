@@ -1,7 +1,7 @@
 #pragma once
 #include "pch.h"
 
-#define DEPTH_THRESHOULD		32u
+
 
 namespace dsl {
 	template<typename _DSTy>
@@ -55,7 +55,7 @@ namespace dsl {
 		Iterator& operator++() {
 #ifdef EXCEPTION_DETECTION
 			if (!this->src || !this->tree) throw std::exception("object of SplayTree iterator: invalid operation by ++ (null pointer of source data)");
-			if (*this == this->tree->End()) throw std::exception("object of SplayTree iterator: can't be ++ any more");
+			if (this->src == this->tree->End().src) throw std::exception("object of SplayTree iterator: can't be ++ any more");
 #endif // EXCEPTION_DETECTION
 			if (this->src->ch[1]) {
 				this->src = this->src->ch[1];
@@ -65,9 +65,8 @@ namespace dsl {
 				while (this->src == this->src->fa->ch[1]) this->src = this->src->fa;
 				this->src = this->src->fa;
 			}
-			_ElemType* tmp = this->src;
-			for (unsigned i = 0; i < DEPTH_THRESHOULD && tmp->fa; ++i) tmp = tmp->fa;
-			this->tree->Splay(tmp);
+
+			this->tree->Splay(this->src);
 			return *this;
 		};
 
@@ -87,9 +86,7 @@ namespace dsl {
 				this->src = this->src->fa;
 			}
 
-			_ElemType* tmp = this->src;
-			for (unsigned i = 0; i < DEPTH_THRESHOULD && tmp->fa; ++i) tmp = tmp->fa;
-			this->tree->Splay(tmp);
+			this->tree->Splay(this->src);
 			return *this;
 		};
 

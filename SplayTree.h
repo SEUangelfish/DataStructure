@@ -2,6 +2,8 @@
 #include "Allocator.h"
 #include "Iterator.h"
 
+#define DEPTH_THRESHOULD		32u
+
 namespace dsl {
 	template<typename _Key>
 	class SplaySetNode {
@@ -71,8 +73,18 @@ namespace dsl {
 		_Node* Combine(_Node* left, _Node* right) {
 			if (!left) return right;
 			if (!right) return left;
+			left->fa = right->fa = nullptr;
 			while (left->ch[1]) left = left->ch[1];
-			this->Splay(left);
+
+			while (left->fa) {
+				_Node* y = left->fa, * z = y->fa;
+				if (z) {
+					if ((left == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
+					else this->Rotate(left);
+				}
+				this->Rotate(left);
+			}
+
 			left->ch[1] = right;
 			right->fa = left;
 			this->PushUp(left);
@@ -122,8 +134,11 @@ namespace dsl {
 		}
 
 		// rotate x to the child of fa
-		// rotate x to the root by default
-		void Splay(_Node* x, _Node* fa = nullptr) {
+		// set fa to nullptr if want x to rotate to root
+		void Splay(_Node* x, _Node* fa) {
+#ifdef EXCEPTION_DETECTION
+			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x)");
+#endif // EXCEPTION_DETECTION
 			while (x->fa != fa) {
 				_Node* y = x->fa, * z = y->fa;
 				if (z != fa) {
@@ -135,23 +150,25 @@ namespace dsl {
 			if (!fa) this->root = x;
 		}
 
-		// limit: maximum number of rotate
-		void Splay(_Node* x, size_t limit) {
-			if (!limit) return;
-			while (x->fa) {
+		// rotate x to the depth DEPTH_THRESHOULD
+		void Splay(_Node* x) {
+#ifdef EXCEPTION_DETECTION
+			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x, ancestor)");
+#endif // EXCEPTION_DETECTION
+
+			_Node* ancestor = x;
+			for (unsigned i = DEPTH_THRESHOULD; i && ancestor; --i) ancestor = ancestor->fa;
+			while (ancestor) {
 				_Node* y = x->fa, * z = y->fa;
 				if (z) {
 					if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
 					else this->Rotate(x);
-					if (!--limit) {
-						if (!x->fa->fa) this->root = x->fa;
-						return;
-					}
+					ancestor = ancestor->fa;
+					if (!ancestor) return;
 				}
 				this->Rotate(x);
-				if (!--limit) break;
+				ancestor = ancestor->fa;
 			}
-			if (!x->fa) this->root = x;
 		}
 
 		// node comparison operator
@@ -196,13 +213,9 @@ namespace dsl {
 
 		Iterator Begin() {
 			_Node* u = this->root;
-			size_t dep = 0;
-			while (u->ch[0]) {
-				u = u->ch[0];
-				++dep;
-			}
-			if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
-			return { u,this };
+			while (u->ch[0]) u = u->ch[0];
+			this->Splay(u);
+			return { u, this };
 		}
 
 		Iterator End() {
@@ -213,13 +226,20 @@ namespace dsl {
 		// return End() if such node do not exist 
 		Iterator Find(const _KTy& key) {
 			_Node* u = this->root;
-			size_t dep = 0;
-			while (u && this->operator()(u, key) != this->operator()(key, u)) {
-				u = u->ch[this->operator()(u, key)];
-				++dep;
+			bool idx;
+			while (true) {
+				if (this->operator()(u, key) == this->operator()(key, u)) {
+					this->Splay(u);
+					return { u, this };
+				}
+				idx = this->operator()(u, key);
+				if (!u->ch[idx]) {
+					this->Splay(u);
+					return { this->sentry, this };
+				}
+				u = u->ch[idx];
 			}
-			if (!u) u = this->sentry;
-			if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
+			this->Splay(u);
 			return { u, this };
 		}
 
@@ -227,45 +247,50 @@ namespace dsl {
 		// return End() if such node do not exist 
 		Iterator Precursor(const _KTy& key) {
 			_Node* pre = nullptr, * u = this->root;
-			size_t dep = 0;
 			while (u) {
 				if (this->operator()(u, key)) {
 					pre = u;
 					u = u->ch[1];
+					while (u) {
+						if (this->operator()(u, key)) {
+							pre = u;
+							u = u->ch[1];
+						}
+						else u = u->ch[0];
+					}
+				}
+				else if (!u->ch[0]) {
+					this->Splay(u);
+					return { this->sentry, this };
 				}
 				else u = u->ch[0];
-				++dep;
 			}
-			if (!pre) pre = this->sentry;
-			if (dep > DEPTH_THRESHOULD) this->Splay(pre, dep - DEPTH_THRESHOULD);
-			return { pre,this };
+			this->Splay(pre);
+			return { pre, this };
 		}
 
 		// successor of key
 		// return End() if such node do not exist 
 		Iterator Successor(const _KTy& key) {
 			_Node* suc = nullptr, * u = this->root;
-			size_t dep = 0;
 			while (u) {
 				if (this->operator()(key, u)) {
 					suc = u;
 					u = u->ch[0];
 				}
 				else u = u->ch[1];
-				++dep;
 			}
-			if (dep > DEPTH_THRESHOULD) this->Splay(suc, dep - DEPTH_THRESHOULD);
-			return { suc,this };
+			this->Splay(suc);
+			return { suc, this };
 		}
 
 		// return the first node >= key
 		// return End() if such node do not exist 
 		Iterator LowerBound(const _KTy& key) {
 			_Node* suc = nullptr, * u = this->root;
-			size_t dep = 0;
 			while (u) {
 				if (this->operator()(u, key) == this->operator()(key, u)) {
-					if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
+					this->Splay(u);
 					return { u, this };
 				}
 				if (this->operator()(key, u)) {
@@ -273,9 +298,8 @@ namespace dsl {
 					u = u->ch[0];
 				}
 				else u = u->ch[1];
-				++dep;
 			}
-			if (dep > DEPTH_THRESHOULD) this->Splay(suc, dep - DEPTH_THRESHOULD);
+			this->Splay(suc);
 			return { suc, this };
 		}
 
@@ -306,29 +330,27 @@ namespace dsl {
 			_Node* pre = nullptr, * u = this->root, * v = this->alloc.New(1);
 
 			new (v) _Node(_KTy(std::forward<_Args>(args)...));
-			size_t dep = 0;
 
 			while (u) {
 				if (this->operator()(u, v) == this->operator()(v, u)) {
 					this->alloc.Free(v, 1);
-					if (dep > DEPTH_THRESHOULD) this->Splay(u, dep - DEPTH_THRESHOULD);
+					this->Splay(u);
 					return std::make_pair(Iterator(u, this), false);
 				}
 				pre = u;
 				u = u->ch[this->operator()(u, v)];
-				++dep;
 			}
 
 			pre->ch[this->operator()(pre, v)] = v;
 			v->fa = pre;
-			if (dep > DEPTH_THRESHOULD) this->Splay(v, dep - DEPTH_THRESHOULD);
+			this->Splay(v);
 			++this->size;
 			return std::make_pair(Iterator(v, this), true);
 		}
 
 		void Erase(Iterator itr) {
 #ifdef EXCEPTION_DETECTION
-			if (itr.Source() == this->sentry || this->Find(itr->key).Source() == this->sentry) throw std::exception("object of SplayTree£ºinvalid iterator by Erase()");
+			if (itr.Source() == this->sentry) throw std::exception("object of SplayTree£ºinvalid iterator by Erase()");
 #endif // EXCEPTION_DETECTION
 			_Node* tmp = this->Combine(itr->ch[0], itr->ch[1]);
 			if (tmp) tmp->fa = itr->fa;
@@ -343,7 +365,7 @@ namespace dsl {
 			if (x == this->sentry) return false;
 			_Node* tmp = this->Combine(x->ch[0], x->ch[1]);
 			if (tmp) tmp->fa = x->fa;
-			if (x->fa) x->fa->ch[this->operator()(x->fa, key)] = tmp;
+			if (x->fa) x->fa->ch[this->operator()(x->fa, x)] = tmp;
 			else this->root = tmp;
 			--this->size;
 			this->alloc.Free(x, 1);
