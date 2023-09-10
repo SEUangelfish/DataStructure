@@ -22,7 +22,14 @@ namespace dsl {
 
 		SplaySetNode() = default;
 		SplaySetNode(const _KTy& _key) :key(_key) {}
+		SplaySetNode(const _KTy& _key, _Node* _fa) :fa(_fa), key(_key) {}
+		SplaySetNode(const _KTy& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, key(_key) {}
 		SplaySetNode(_KTy&& _key) :key(std::move(_key)) {}
+		SplaySetNode(_KTy&& _key, _Node* _fa) :fa(_fa), key(std::move(_key)) {}
+		SplaySetNode(_KTy&& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, key(std::move(_key)) {}
+		SplaySetNode(SplaySetNode&& mv) noexcept :fa(mv.fa), ch{ mv.ch[0], mv.ch[1] }, key(std::move(mv.key)) {
+			memset(&mv, 0, sizeof(SplaySetNode));
+		}
 
 		SplaySetNode(const _Node& cp) = delete;
 		_Node& operator=(const _Node& cp) = delete;
@@ -92,20 +99,42 @@ namespace dsl {
 		}
 
 	public:
-		SplayTree() : root(this->alloc.New(1)), sentry(root) {
-			// attention: sentry node do not call construction and destructor
-			memset(this->root, 0, sizeof(_Node));
-		};
+		// attention: sentry node do not call construction and destructor
+		SplayTree() = default;
+		explicit SplayTree(const _Cmpr& _cpr) :cpr(_cpr) {};
+		explicit SplayTree(const _ElemAlloc& _alloc) :alloc(_alloc) {};
+		explicit SplayTree(_ElemAlloc&& _alloc) :alloc(std::move(alloc)) {};
+		SplayTree(const _ElemAlloc& _alloc, const _Cmpr& _cpr) : alloc(_alloc), cpr(_cpr) {};
+		SplayTree(_ElemAlloc&& _alloc, const _Cmpr& _cpr) :alloc(std::move(_alloc)), cpr(_cpr) {};
 
-		//SplayTree(const SplayTree& cp) :alloc(cp.alloc), cpr(cp.cpr), size(cp.size) {
-		//	_Node* head = this->root = this->alloc.New(1), *tail = head;
-		//	head->ch[0] = 
+		SplayTree(const SplayTree& cp) :alloc(cp.alloc), cpr(cp.cpr), size(cp.size) {
+			_Node* top = this->root = this->alloc.New(1), *u, * mould;
+			top->ch[0] = cp.root;
+			top->ch[1] = top->fa = nullptr;
+			while (top) {
+				u = top;
+				top = top->ch[1];
+				mould = u->ch[0];
+				if (mould == cp.sentry) this->sentry = u;
+				else u->key = mould->key;
 
-		//}
+				for (int i = 0; i < 2; ++i) {
+					if (mould->ch[i]) {
+						u->ch[i] = this->alloc.New(1);
+						u->ch[i]->fa = u;
+						u->ch[i]->ch[0] = mould->ch[i];
+						u->ch[i]->ch[1] = top;
+						top = u->ch[i];
+					}
+					else u->ch[i] = nullptr;
+				}
+			}
+		}
 
 		SplayTree(SplayTree&& mv) noexcept :alloc(std::move(mv.alloc)), cpr(std::move(mv.cpr)), root(mv.root), sentry(mv.sentry), size(mv.size) {
 			memset(&mv, 0, sizeof(SplayTree));
 		}
+
 
 		SplayTree& operator=(const SplayTree& mv) {
 			this->~SplayTree();
@@ -122,14 +151,15 @@ namespace dsl {
 		virtual ~SplayTree() {
 			if (!this->root) return;
 
-			_Node* head = this->root, * tail = this->root, * next;
+			_Node* head = this->root, * tail = this->root;
+
 			while (1) {
 				if (head->ch[0]) tail = tail->fa = head->ch[0];
 				if (head->ch[1]) tail = tail->fa = head->ch[1];
-				next = head->fa;
+				this->root = head->fa;
 				this->alloc.Free(head, head != this->sentry);
 				if (head == tail) break;
-				head = next;
+				head = this->root;
 			};
 		}
 
@@ -379,8 +409,8 @@ namespace dsl {
 	protected:
 		_ElemAlloc alloc;
 		_Cmpr cpr;
-		_Node* root;
-		_Node* sentry;
+		_Node* root = this->alloc.New(1, true);
+		_Node* sentry = this->root;
 		size_t size = 0;
 	};
 }
