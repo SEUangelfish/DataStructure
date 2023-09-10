@@ -14,11 +14,12 @@ namespace dsl {
 		// no initialization operation is performed
 		// cnt: number of elements
 		// return: heap resourse pointer of type _Ty
-		_Ty* New(size_t cnt) {
+		_Ty* New(size_t cnt, bool clean = false) {
 			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
+			if (clean) memset(res, 0, cnt * sizeof(_Ty));
 			return res;
 		}
 
@@ -51,7 +52,7 @@ namespace dsl {
 #ifdef WARNING_DETECTION
 			std::cerr << "warning: RecycleAllocator should not be copied" << std::endl;
 #endif // WARNING_DETECTION
-		};
+	};
 
 		RecycleAllocator(RecycleAllocator&& mv) noexcept :head(mv.head) {
 			memset(&mv, 0, sizeof(RecycleAllocator));
@@ -61,7 +62,7 @@ namespace dsl {
 #ifdef WARNING_DETECTION
 			std::cerr << "warning: RecycleAllocator should not be copied" << std::endl;
 #endif // WARNING_DETECTION
-		};
+};
 		RecycleAllocator& operator=(RecycleAllocator&& cp) noexcept {
 			this->~RecycleAllocator();
 			new (this) RecycleAllocator(std::move(cp));
@@ -82,20 +83,21 @@ namespace dsl {
 		// no initialization operation is performed
 		// cnt(as 1 as possible): number of elements
 		// return: heap resourse pointer of type _Ty
-		_Ty* New(size_t cnt) {
+		_Ty* New(size_t cnt, bool clean = false) {
 			if constexpr (sizeof(_Ty) >= sizeof(_Ty*)) {
 				if (cnt == 1 && this->head) {
 					_Ty* res = (_Ty*)this->head;
 					this->head = this->head->next;
 					return res;
 				}
-				}
+			}
 			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
+			if (clean) memset(res, 0, cnt * sizeof(_Ty));
 			return res;
-			}
+		}
 
 		// release resources
 		// class types are destructed
@@ -110,9 +112,20 @@ namespace dsl {
 			else operator delete(src);
 		}
 
+		// release resources
+		void Clear() {
+			if constexpr (sizeof(_Ty) < sizeof(_Ty*)) return;
+			void* tmp;
+			while (this->head) {
+				tmp = this->head;
+				this->head = this->head->next;
+				operator delete(tmp);
+			}
+		}
+
 	protected:
 		Block* head = nullptr;
-		};
+	};
 
 
-	}
+}
