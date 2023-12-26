@@ -132,7 +132,8 @@ namespace dsl {
 		}
 
 		SplayTree(SplayTree&& mv) noexcept :alloc(std::move(mv.alloc)), cpr(std::move(mv.cpr)), root(mv.root), sentry(mv.sentry), size(mv.size) {
-			memset(&mv, 0, sizeof(SplayTree));
+			// don't set virtual table pointer to null
+			memset(&mv + sizeof(void*), 0, sizeof(SplayTree) - sizeof(void*));
 		}
 
 
@@ -258,11 +259,11 @@ namespace dsl {
 			_Node* u = this->root;
 			bool idx;
 			while (true) {
-				if (this->operator()(u, key) == this->operator()(key, u)) {
+				idx = this->operator()(u, key);
+				if (idx == this->operator()(key, u)) {
 					this->Splay(u);
 					return { u, this };
 				}
-				idx = this->operator()(u, key);
 				if (!u->ch[idx]) {
 					this->Splay(u);
 					return { this->sentry, this };
@@ -318,12 +319,14 @@ namespace dsl {
 		// return End() if such node do not exist 
 		Iterator LowerBound(const _KTy& key) {
 			_Node* suc = nullptr, * u = this->root;
+			bool idx;
 			while (u) {
-				if (this->operator()(u, key) == this->operator()(key, u)) {
+				idx = this->operator()(key, u);
+				if (this->operator()(u, key) == idx) {
 					this->Splay(u);
 					return { u, this };
 				}
-				if (this->operator()(key, u)) {
+				if (idx) {
 					suc = u;
 					u = u->ch[0];
 				}
@@ -361,17 +364,19 @@ namespace dsl {
 
 			new (v) _Node(_KTy(std::forward<_Args>(args)...));
 
+			bool idx;
 			while (u) {
-				if (this->operator()(u, v) == this->operator()(v, u)) {
+				idx = this->operator()(u, v);
+				if (idx == this->operator()(v, u)) {
 					this->alloc.Free(v, 1);
 					this->Splay(u);
 					return std::make_pair(Iterator(u, this), false);
 				}
 				pre = u;
-				u = u->ch[this->operator()(u, v)];
+				u = u->ch[idx];
 			}
 
-			pre->ch[this->operator()(pre, v)] = v;
+			pre->ch[idx] = v;
 			v->fa = pre;
 			this->Splay(v);
 			++this->size;
@@ -409,7 +414,7 @@ namespace dsl {
 	protected:
 		_ElemAlloc alloc;
 		_Cmpr cpr;
-		_Node* root = this->alloc.New(1, true);
+		_Node* root = this->alloc.New(1);
 		_Node* sentry = this->root;
 		size_t size = 0;
 	};

@@ -10,24 +10,28 @@ namespace dsl {
 	template<typename _Ty>
 	class Allocator {
 	public:
+		Allocator() = default;
+
+		virtual ~Allocator() {}
+
 		// resources request function
 		// no initialization operation is performed
 		// cnt: number of elements
 		// return: heap resourse pointer of type _Ty
-		_Ty* New(size_t cnt, bool clean = false) {
+		virtual _Ty* New(size_t cnt) {
 			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
-			if (clean) memset(res, 0, cnt * sizeof(_Ty));
+			memset(res, 0, sizeof(_Ty) * cnt);
 			return res;
 		}
 
 		// release resources
 		// class types are destructed
-		// size: number of elements to be destructed
-		void Free(_Ty* src, size_t size) {
-			if constexpr (std::is_class<_Ty>::value) for (_Ty* st = src, *ed = src + size; st != ed; ++st) st->~_Ty();
+		// cnt: number of elements to be destructed
+		virtual void Free(_Ty* src, size_t cnt) {
+			if constexpr (std::is_class<_Ty>::value) for (size_t i = 0; i < cnt; ++i) src[i].~_Ty();
 			operator delete(src);
 		}
 	};
@@ -39,38 +43,20 @@ namespace dsl {
 	// tip: An individual element size should be greater than or equal to the size of one pointer
 	//		otherwise it cannot be optimized, equivalent to Allocator<_Ty>
 	template<typename _Ty>
-	class RecycleAllocator {
-		union Block {
-			_Ty null;
-			Block* next;
+	class RecycleAllocator : public Allocator<_Ty> {
+		struct Block {
+			int cnt;
+			union {
+				_Ty null;
+				Block* next;
+			};
 		};
 
 	public:
 		RecycleAllocator() = default;
 
-		RecycleAllocator(const RecycleAllocator& cp) {
-#ifdef WARNING_DETECTION
-			std::cerr << "warning: RecycleAllocator should not be copied" << std::endl;
-#endif // WARNING_DETECTION
-	};
-
-		RecycleAllocator(RecycleAllocator&& mv) noexcept :head(mv.head) {
-			memset(&mv, 0, sizeof(RecycleAllocator));
-		}
-
-		RecycleAllocator& operator=(const RecycleAllocator& cp) {
-#ifdef WARNING_DETECTION
-			std::cerr << "warning: RecycleAllocator should not be copied" << std::endl;
-#endif // WARNING_DETECTION
-};
-		RecycleAllocator& operator=(RecycleAllocator&& cp) noexcept {
-			this->~RecycleAllocator();
-			new (this) RecycleAllocator(std::move(cp));
-			return *this;
-		};
-
-		~RecycleAllocator() {
-			if constexpr (sizeof(_Ty) < sizeof(_Ty*)) return;
+		virtual ~RecycleAllocator() {
+			if constexpr (sizeof(_Ty) < sizeof(Block)) return;
 			void* tmp;
 			while (this->head) {
 				tmp = this->head;
@@ -79,33 +65,58 @@ namespace dsl {
 			}
 		}
 
+		RecycleAllocator(const RecycleAllocator& cp) {
+#ifdef WARNING_DETECTION
+			std::cerr << "copy constructor of RecycleAllocator: this function doesn't copy reserved memory" << endl;
+#endif // WARNING_DETECTION
+		};
+
+		RecycleAllocator(RecycleAllocator&& mv) noexcept :head(mv.head) {
+			mv.head = nullptr;
+		}
+
+		RecycleAllocator& operator=(const RecycleAllocator& cp) = delete;
+
+		RecycleAllocator& operator=(RecycleAllocator&& cp) noexcept {
+			this->~RecycleAllocator();
+			new (this) RecycleAllocator(std::move(cp));
+			return *this;
+		};
+
 		// resources request function
 		// no initialization operation is performed
-		// cnt(as 1 as possible): number of elements
+		// cnt: number of elements
 		// return: heap resourse pointer of type _Ty
-		_Ty* New(size_t cnt, bool clean = false) {
-			if constexpr (sizeof(_Ty) >= sizeof(_Ty*)) {
-				if (cnt == 1 && this->head) {
-					_Ty* res = (_Ty*)this->head;
-					this->head = this->head->next;
-					return res;
+		virtual _Ty* New(size_t cnt) override {
+			if constexpr (sizeof(_Ty) >= sizeof(Block)) {
+				Block* pre = nullptr, cur = this->head;
+				while (cur) {
+					if (cnt <= cur->cnt) {
+						if (pre) pre->next = cur->next;
+						else this->head->next = cur->next;
+						memset(cur, 0, sizeof(_Ty) * cnt);
+						return (_Ty*)cur;
+					}
+					pre = cur;
+					cur = cur->next;
 				}
 			}
 			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
-			if (clean) memset(res, 0, cnt * sizeof(_Ty));
+			memset(res, 0, sizeof(_Ty) * cnt);
 			return res;
 		}
 
 		// release resources
 		// class types are destructed
 		// size: number of elements to be destructed
-		void Free(_Ty* src, size_t size) {
-			if constexpr (std::is_class<_Ty>::value)  for (_Ty* st = src, *ed = src + size; st != ed; ++st) st->~_Ty();
-			if constexpr (sizeof(_Ty) >= sizeof(_Ty*)) {
+		virtual void Free(_Ty* src, size_t cnt) override {
+			if constexpr (std::is_class<_Ty>::value) for (size_t i = 0; i < cnt; ++i) src[i].~_Ty();
+			if constexpr (sizeof(_Ty) >= sizeof(Block)) {
 				Block* tmp = (Block*)src;
+				tmp->cnt = cnt;
 				tmp->next = this->head;
 				this->head = tmp;
 			}
@@ -114,7 +125,7 @@ namespace dsl {
 
 		// release resources
 		void Clear() {
-			if constexpr (sizeof(_Ty) < sizeof(_Ty*)) return;
+			if constexpr (sizeof(_Ty) < sizeof(Block)) return;
 			void* tmp;
 			while (this->head) {
 				tmp = this->head;
@@ -125,7 +136,7 @@ namespace dsl {
 
 	protected:
 		Block* head = nullptr;
-	};
+		};
 
 
-}
+	}
