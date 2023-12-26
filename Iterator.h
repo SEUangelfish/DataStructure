@@ -10,7 +10,6 @@ namespace dsl {
 		using _ElemType = typename _DSTy::_ElemType;
 
 	public:
-		Iterator() = default;
 		Iterator(_ElemType* _src) : src(_src) {}
 		Iterator(const Iterator& cp) : src(cp.src) {}
 
@@ -85,6 +84,7 @@ namespace dsl {
 				while (this->src->fa && this->src == this->src->fa->ch[0]) this->src = this->src->fa;
 				this->src = this->src->fa;
 			}
+
 
 			this->tree->Splay(this->src);
 			return *this;

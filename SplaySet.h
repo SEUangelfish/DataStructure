@@ -28,7 +28,6 @@ namespace dsl {
 		SplaySet(const SplaySet& cp) : SplayTree(cp) {}
 		SplaySet(SplaySet&& mv) noexcept :SplayTree(std::move(mv)) {}
 
-
 		SplaySet& operator=(const SplaySet& cp) {
 			this->SplayTree::operator=(cp);
 			return *this;
@@ -55,6 +54,5 @@ namespace dsl {
 		Iterator UpperBound(const _KTy& key) {
 			return this->Successor(key);
 		}
-
 	};
 }
