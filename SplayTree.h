@@ -5,45 +5,6 @@
 #define DEPTH_THRESHOULD		32u
 
 namespace dsl {
-	template<typename _Key>
-	class SplaySetNode {
-		template<typename _Node, typename _Cmpr, typename _Alloc>
-		friend class SplayTree;
-
-		template<typename _DSTy>
-		friend class SplayTreeIterator;
-
-	public:
-		using _KTy = _Key;
-		using _Node = SplaySetNode<_KTy>;
-
-	public:
-		~SplaySetNode() = default;
-
-		SplaySetNode() = default;
-		SplaySetNode(const _KTy& _key) :key(_key) {}
-		SplaySetNode(const _KTy& _key, _Node* _fa) :fa(_fa), key(_key) {}
-		SplaySetNode(const _KTy& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, key(_key) {}
-		SplaySetNode(_KTy&& _key) :key(std::move(_key)) {}
-		SplaySetNode(_KTy&& _key, _Node* _fa) :fa(_fa), key(std::move(_key)) {}
-		SplaySetNode(_KTy&& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, key(std::move(_key)) {}
-		SplaySetNode(SplaySetNode&& mv) noexcept :fa(mv.fa), ch{ mv.ch[0], mv.ch[1] }, key(std::move(mv.key)) {
-			memset(&mv, 0, sizeof(SplaySetNode));
-		}
-
-		SplaySetNode(const _Node& cp) = delete;
-		_Node& operator=(const _Node& cp) = delete;
-
-		_KTy& Key() {
-			return this->key;
-		}
-
-	protected:
-		_Node* fa = nullptr;
-		_Node* ch[2]{ nullptr, nullptr };
-		_KTy key;
-	};
-
 	// SplayTree base class	
 	// _Node		node type which contains key, value and other essential information
 	// _Cmpr		comparator of key
@@ -52,9 +13,10 @@ namespace dsl {
 	class SplayTree {
 	public:
 		using _ElemType = _Node;
+		using _DataType = typename _Node::_ElemType;
 		using _ElemAlloc = _Alloc;
 		using _KTy = typename _Node::_KTy;
-		using Iterator = SplayTreeIterator<SplayTree<_ElemType, _Cmpr, _ElemAlloc>>;
+		using Iterator = SplayTreeIterator<SplayTree<_Node, _Cmpr, _ElemAlloc>>;
 
 	protected:
 		// expansion interface
@@ -116,7 +78,7 @@ namespace dsl {
 				top = top->ch[1];
 				mould = u->ch[0];
 				if (mould == cp.sentry) this->sentry = u;
-				else u->key = mould->key;
+				else u->Key() = mould->Key();
 
 				for (int i = 0; i < 2; ++i) {
 					if (mould->ch[i]) {
@@ -132,8 +94,7 @@ namespace dsl {
 		}
 
 		SplayTree(SplayTree&& mv) noexcept :alloc(std::move(mv.alloc)), cpr(std::move(mv.cpr)), root(mv.root), sentry(mv.sentry), size(mv.size) {
-			// don't set virtual table pointer to null
-			memset(&mv + sizeof(void*), 0, sizeof(SplayTree) - sizeof(void*));
+			mv.root = mv.sentry = mv.size = NULL;
 		}
 
 
@@ -205,17 +166,17 @@ namespace dsl {
 		// node comparison operator
 		// ture if n1 < n2 
 		bool operator ()(_Node* n1, _Node* n2) {
-			return n1 != this->sentry && (n2 == this->sentry || this->cpr(n1->key, n2->key));
+			return n1 != this->sentry && (n2 == this->sentry || this->cpr(n1->Key(), n2->Key()));
 		}
 		// node comparison operator
 		// true if node < key 
 		bool operator ()(_Node* node, const _KTy& key) {
-			return node != this->sentry && this->cpr(node->key, key);
+			return node != this->sentry && this->cpr(node->Key(), key);
 		}
 		// node comparison operator
 		// true if key < node
 		bool operator ()(const _KTy& key, _Node* node) {
-			return node == this->sentry || this->cpr(key, node->key);
+			return node == this->sentry || this->cpr(key, node->Key());
 		}
 
 		void Clear() {
@@ -240,7 +201,7 @@ namespace dsl {
 		// true if empty
 		bool Empty() { return !this->size; }
 
-		_Node* Root() { return this->root; }
+		Iterator Root() { return this->root; }
 
 		Iterator Begin() {
 			_Node* u = this->root;
@@ -360,7 +321,7 @@ namespace dsl {
 		// if fail, the first parameter is the iterator of conflicting node
 		template<typename... _Args>
 		std::pair<Iterator, bool> Emplace(_Args&&... args) {
-			_Node* pre = nullptr, * u = this->root, * v = this->alloc.New(1);
+			_Node* u = this->root, * pre = u, * v = this->alloc.New(1);
 
 			new (v) _Node(_KTy(std::forward<_Args>(args)...));
 
