@@ -2,7 +2,7 @@
 #include "Allocator.h"
 #include "Iterator.h"
 
-#define DEPTH_THRESHOULD		32u
+// #define DEPTH_THRESHOULD		32
 
 namespace dsl {
 	// SplayTree base class	
@@ -148,18 +148,37 @@ namespace dsl {
 			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x, ancestor)");
 #endif // EXCEPTION_DETECTION
 
-			_Node* ancestor = x;
-			for (unsigned i = DEPTH_THRESHOULD; i && ancestor; --i) ancestor = ancestor->fa;
-			while (ancestor) {
+			//_Node* ancestor = x;
+			//for (int i = DEPTH_THRESHOULD; i && ancestor; --i) ancestor = ancestor->fa;
+			//while (ancestor) {
+			//	_Node* y = x->fa, * z = y->fa;
+			//	if (z) {
+			//		if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
+			//		else this->Rotate(x);
+			//		ancestor = ancestor->fa;
+			//		if (!ancestor) return;
+			//	}
+			//	this->Rotate(x);
+			//	ancestor = ancestor->fa;
+			//}
+
+			if (x == this->root) return;
+			_Node* fast = x->fa;
+			while (true) {
+				fast = fast->fa;
+				if (!fast) return;
+				fast = fast->fa;
+				if (!fast) return;
+
 				_Node* y = x->fa, * z = y->fa;
-				if (z) {
-					if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
-					else this->Rotate(x);
-					ancestor = ancestor->fa;
-					if (!ancestor) return;
-				}
+				if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
+				else this->Rotate(x);
+
+				fast = fast->fa;
+				if (!fast) return;
+				fast = fast->fa;
+				if (!fast) return;
 				this->Rotate(x);
-				ancestor = ancestor->fa;
 			}
 		}
 

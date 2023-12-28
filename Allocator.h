@@ -44,23 +44,22 @@ namespace dsl {
 	//		otherwise it cannot be optimized, equivalent to Allocator<_Ty>
 	template<typename _Ty>
 	class RecycleAllocator : public Allocator<_Ty> {
-		struct Block {
-			int cnt;
-			union {
-				_Ty null;
+		union Block {
+			_Ty null;
+			struct{
+				int cnt;
 				Block* next;
-			};
+			}link;
 		};
 
 	public:
 		RecycleAllocator() = default;
 
 		virtual ~RecycleAllocator() {
-			if constexpr (sizeof(_Ty) < sizeof(Block)) return;
 			void* tmp;
 			while (this->head) {
 				tmp = this->head;
-				this->head = this->head->next;
+				this->head = this->head->link.next;
 				operator delete(tmp);
 			}
 		}
@@ -88,19 +87,18 @@ namespace dsl {
 		// cnt: number of elements
 		// return: heap resourse pointer of type _Ty
 		virtual _Ty* New(size_t cnt) override {
-			if constexpr (sizeof(_Ty) >= sizeof(Block)) {
-				Block* pre = nullptr, cur = this->head;
-				while (cur) {
-					if (cnt <= cur->cnt) {
-						if (pre) pre->next = cur->next;
-						else this->head->next = cur->next;
-						memset(cur, 0, sizeof(_Ty) * cnt);
-						return (_Ty*)cur;
-					}
-					pre = cur;
-					cur = cur->next;
+			Block* pre = nullptr, * cur = this->head;
+			while (cur) {
+				if (cnt <= cur->link.cnt) {
+					if (pre) pre->link.next = cur->link.next;
+					else this->head = cur->link.next;
+					memset(cur, 0, sizeof(_Ty) * cnt);
+					return (_Ty*)cur;
 				}
+				pre = cur;
+				cur = cur->link.next;
 			}
+
 			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
@@ -114,10 +112,10 @@ namespace dsl {
 		// size: number of elements to be destructed
 		virtual void Free(_Ty* src, size_t cnt) override {
 			if constexpr (std::is_class<_Ty>::value) for (size_t i = 0; i < cnt; ++i) src[i].~_Ty();
-			if constexpr (sizeof(_Ty) >= sizeof(Block)) {
+			if (sizeof(_Ty) * cnt >= sizeof(Block)) {
 				Block* tmp = (Block*)src;
-				tmp->cnt = cnt;
-				tmp->next = this->head;
+				tmp->link.cnt = cnt;
+				tmp->link.next = this->head;
 				this->head = tmp;
 			}
 			else operator delete(src);
@@ -125,7 +123,6 @@ namespace dsl {
 
 		// release resources
 		void Clear() {
-			if constexpr (sizeof(_Ty) < sizeof(Block)) return;
 			void* tmp;
 			while (this->head) {
 				tmp = this->head;
@@ -136,7 +133,7 @@ namespace dsl {
 
 	protected:
 		Block* head = nullptr;
-		};
+	};
 
 
-	}
+}
