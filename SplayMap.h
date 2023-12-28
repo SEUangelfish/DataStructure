@@ -21,13 +21,22 @@ namespace dsl {
 		~SplayMapNode() = default;
 
 		SplayMapNode() = default;
-		//SplayMapNode(const _KTy& _key) :_SplaySetNode(_key) {}
-		//SplayMapNode(const _KTy& _key, _Node* _fa) :_SplaySetNode(_key, _fa) {}
-		//SplayMapNode(const _KTy& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) : _SplaySetNode(_key, _fa, leftChild, rightChild) {}
-		//SplayMapNode(_KTy&& _key) :_SplaySetNode(std::move(_key)) {}
-		//SplayMapNode(_KTy&& _key, _Node* _fa) :_SplaySetNode(std::move(_key), _fa) {}
-		//SplayMapNode(_KTy&& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :_SplaySetNode(std::move(_key), _fa, leftChild, rightChild) {}
-		//SplayMapNode(SplayMapNode&& mv) noexcept :_SplaySetNode(std::move(mv)), value(std::move(value)) {}
+
+		SplayMapNode(const _ElemType& _data) :data(_data) {}
+		SplayMapNode(const _KTy& _key) {
+			this->data.first = _key;
+		}
+		SplayMapNode(_KTy&& _key) {
+			this->data.first = std::move(_key);
+		}
+		SplayMapNode(const _KTy& _key, const _VTy& _val) :data(_key, _val) {}
+		SplayMapNode(const _KTy& _key, _VTy&& _val) :data(_key, std::move(_val)) {}
+		SplayMapNode(_KTy&& _key, const _VTy& _val) :data(std::move(_key), _val) {}
+		SplayMapNode(_KTy&& _key, _VTy&& _val) :data(std::move(_key), std::move(_val)) {}
+		SplayMapNode(_ElemType&& _data) :data(std::move(_data)) {}
+		SplayMapNode(SplayMapNode&& mv) noexcept :fa(mv.fa), ch{ mv.ch[0], mv.ch[1] }, data(std::move(mv.data)) {
+			mv.fa = mv.ch[0] = mv.ch[1] = nullptr;
+		}
 
 		_KTy& Key() {
 			return this->data.first;
@@ -52,7 +61,7 @@ namespace dsl {
 		: public SplayTree<SplayMapNode<_Key, _Value>, _Cmpr, _Alloc<SplayMapNode<_Key, _Value>>>
 	{
 	public:
-		using _Node = typename SplayMapNode<_Key, _Value>::_Node;
+		using _Node = SplayMapNode<_Key, _Value>;
 		using _KTy = _Key;
 		using _VTy = _Value;
 		using _ElemType = _Node;
@@ -60,7 +69,46 @@ namespace dsl {
 		using _SplayTree = SplayTree<_Node, _Cmpr, _ElemAlloc>;
 		using Iterator = SplayTreeIterator<_SplayTree>;
 
+	public:
+		SplayMap() = default;
+		explicit SplayMap(const _Cmpr& _cpr) : _SplayTree(_cpr) {};
+		explicit SplayMap(const _ElemAlloc& _alloc) :_SplayTree(_alloc) {};
+		explicit SplayMap(_ElemAlloc&& _alloc) :_SplayTree(std::move(_alloc)) {};
+		SplayMap(const _ElemAlloc& _alloc, const _Cmpr& _cpr) : _SplayTree(_alloc, _cpr) {};
+		SplayMap(_ElemAlloc&& _alloc, const _Cmpr& _cpr) :_SplayTree(std::move(_alloc), _cpr) {};
 
+		SplayMap(const SplayMap& cp) : _SplayTree(cp) {}
+		SplayMap(SplayMap&& mv) noexcept :_SplayTree(std::move(mv)) {}
 
+		SplayMap& operator=(const SplayMap& cp) {
+			this->_SplayTree::operator=(cp);
+			return *this;
+		}
+
+		SplayMap& operator=(SplayMap&& mv) noexcept {
+			this->_SplayTree::operator=(std::move(mv));
+			return *this;
+		}
+
+		virtual ~SplayMap() = default;
+
+		_VTy& operator[](const _KTy& key) {
+			return this->Emplace(key).first->second;
+		}
+
+		// the same as Begin()
+		// adapts to C++'s range-based for loops
+		Iterator begin() {
+			return this->Begin();
+		}
+		// the same as End()
+		// adapts to C++'s range-based for loops
+		Iterator end() {
+			return this->End();
+		}
+		// the same as Successor()
+		Iterator UpperBound(const _KTy& key) {
+			return this->Successor(key);
+		}
 	};
 }

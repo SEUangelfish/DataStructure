@@ -297,11 +297,11 @@ namespace dsl {
 			return { suc, this };
 		}
 
-		std::pair<Iterator, bool> Insert(const _KTy& key) {
-			return this->Emplace(key);
+		std::pair<Iterator, bool> Insert(const _DataType& data) {
+			return this->Emplace(data);
 		}
-		std::pair<Iterator, bool> Insert(_KTy&& key) {
-			return this->Emplace(std::move(key));
+		std::pair<Iterator, bool> Insert(_DataType&& data) {
+			return this->Emplace(std::move(data));
 		}
 		template <typename _Iter>
 		void Insert(_Iter begin, _Iter end) {
@@ -310,7 +310,7 @@ namespace dsl {
 				++begin;
 			}
 		}
-		void Insert(std::initializer_list<_KTy> vlist) {
+		void Insert(std::initializer_list<_DataType> vlist) {
 			this->Insert(vlist.begin(), vlist.end());
 		}
 
@@ -323,9 +323,9 @@ namespace dsl {
 		std::pair<Iterator, bool> Emplace(_Args&&... args) {
 			_Node* u = this->root, * pre = u, * v = this->alloc.New(1);
 
-			new (v) _Node(_KTy(std::forward<_Args>(args)...));
+			new (v) _Node(std::forward<_Args>(args)...);
 
-			bool idx;
+			bool idx = 0;
 			while (u) {
 				idx = this->operator()(u, v);
 				if (idx == this->operator()(v, u)) {

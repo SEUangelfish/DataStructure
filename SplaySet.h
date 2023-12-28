@@ -20,13 +20,13 @@ namespace dsl {
 		~SplaySetNode() = default;
 
 		SplaySetNode() = default;
-		SplaySetNode(const _KTy& _key) :data(_key) {}
-		SplaySetNode(const _KTy& _key, _Node* _fa) :fa(_fa), data(_key) {}
-		SplaySetNode(const _KTy& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, data(_key) {}
-		SplaySetNode(_KTy&& _key) :data(std::move(_key)) {}
-		SplaySetNode(_KTy&& _key, _Node* _fa) :fa(_fa), data(std::move(_key)) {}
-		SplaySetNode(_KTy&& _key, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, data(std::move(_key)) {}
-		SplaySetNode(SplaySetNode&& mv) noexcept :fa(mv.fa), ch{ mv.ch[0], mv.ch[1] }, data(std::move(mv.key)) {
+		SplaySetNode(const _ElemType& _data) :data(_data) {}
+		SplaySetNode(const _ElemType& _data, _Node* _fa) :fa(_fa), data(_data) {}
+		SplaySetNode(const _ElemType& _data, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, data(_data) {}
+		SplaySetNode(_ElemType&& _data) :data(std::move(_data)) {}
+		SplaySetNode(_ElemType&& _data, _Node* _fa) :fa(_fa), data(std::move(_data)) {}
+		SplaySetNode(_ElemType&& _data, _Node* _fa, _Node* leftChild, _Node* rightChild) :fa(_fa), ch{ leftChild, rightChild }, data(std::move(_data)) {}
+		SplaySetNode(SplaySetNode&& mv) noexcept :fa(mv.fa), ch{ mv.ch[0], mv.ch[1] }, data(std::move(mv.data)) {
 			mv.fa = mv.ch[0] = mv.ch[1] = nullptr;
 		}
 
