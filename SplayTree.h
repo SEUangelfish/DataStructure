@@ -2,7 +2,9 @@
 #include "Allocator.h"
 #include "Iterator.h"
 
-#define DEPTH_THRESHOULD		32u
+#define DEPTH_THRESHOULD		32
+#define RSR_MAXSIZE				8
+#define RSR_STEP_THRESHOULD		128
 
 namespace dsl {
 	// SplayTree base class	
@@ -90,11 +92,20 @@ namespace dsl {
 					}
 					else u->ch[i] = nullptr;
 				}
+
+				for (int i = 0; i < RSR_MAXSIZE; ++i) {
+					if (cp.rsr[i] == mould) {
+						this->rsr[i] = u;
+						break;
+					}
+				}
 			}
 		}
 
 		SplayTree(SplayTree&& mv) noexcept :alloc(std::move(mv.alloc)), cpr(std::move(mv.cpr)), root(mv.root), sentry(mv.sentry), size(mv.size) {
 			mv.root = mv.sentry = mv.size = NULL;
+			std::copy_n(mv.rsr, RSR_MAXSIZE, this->rsr);
+			memset(mv.rsr, 0, sizeof(mv.rsr));
 		}
 
 
@@ -125,42 +136,47 @@ namespace dsl {
 			};
 		}
 
-		// rotate x to the child of fa
-		// set fa to nullptr if want x to rotate to root
-		void Splay(_Node* x, _Node* fa) {
-#ifdef EXCEPTION_DETECTION
-			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x)");
-#endif // EXCEPTION_DETECTION
-			while (x->fa != fa) {
-				_Node* y = x->fa, * z = y->fa;
-				if (z != fa) {
-					if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
-					else this->Rotate(x);
-				}
-				this->Rotate(x);
-			}
-			if (!fa) this->root = x;
-		}
-
 		// rotate x to the depth DEPTH_THRESHOULD
 		void Splay(_Node* x) {
 #ifdef EXCEPTION_DETECTION
 			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x, ancestor)");
 #endif // EXCEPTION_DETECTION
 
-			_Node* ancestor = x;
-			for (unsigned i = DEPTH_THRESHOULD; i && ancestor; --i) ancestor = ancestor->fa;
-			while (ancestor) {
-				_Node* y = x->fa, * z = y->fa;
-				if (z) {
-					if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
-					else this->Rotate(x);
-					ancestor = ancestor->fa;
-					if (!ancestor) return;
-				}
-				this->Rotate(x);
-				ancestor = ancestor->fa;
+			_Node* fast = x;
+			for (int i = 0; i < DEPTH_THRESHOULD; ++i) {
+				fast = fast->fa;
+				if (!fast) return;
 			}
+
+			int step = 0;
+			while (true) {
+				fast = fast->fa;
+				if (!fast) break;
+				fast = fast->fa;
+				if (!fast) break;
+
+				_Node* y = x->fa, * z = y->fa;
+				if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
+				else this->Rotate(x);
+				++step;
+
+				fast = fast->fa;
+				if (!fast) break;
+				fast = fast->fa;
+				if (!fast) break;
+				this->Rotate(x);
+				++step;
+			}
+			if (step > RSR_STEP_THRESHOULD) {
+				int i = 0;
+				for (; i < RSR_MAXSIZE && this->rsr[i] != x; ++i);
+				if (i == RSR_MAXSIZE) --i;
+				for (; i > 0; --i) this->rsr[i] = this->rsr[i - 1];
+				this->rsr[0] = x;
+			}
+
+
+
 		}
 
 		// node comparison operator
@@ -194,6 +210,7 @@ namespace dsl {
 			this->root = this->sentry;
 			this->root->fa = this->root->ch[0] = nullptr;
 			this->size = 0;
+			memset(this->rsr, 0, sizeof(this->rsr));
 		}
 
 		size_t Size() { return this->size; }
@@ -217,7 +234,17 @@ namespace dsl {
 		// find node by key
 		// return End() if such node do not exist 
 		Iterator Find(const _KTy& key) {
-			_Node* u = this->root;
+			_Node* u;
+
+			for (int i = 0; i < RSR_MAXSIZE && this->rsr[i]; ++i) {
+				u = this->rsr[i];
+				if (this->operator()(u, key) == this->operator()(key, u)) {
+					this->Splay(u);
+					return { u, this };
+				}
+			}
+
+			u = this->root;
 			bool idx;
 			while (true) {
 				idx = this->operator()(u, key);
@@ -353,6 +380,14 @@ namespace dsl {
 			if (itr->fa) itr->fa->ch[this->operator()(itr->fa, itr.Source())] = tmp;
 			else this->root = tmp;
 			--this->size;
+			for (int i = 0; i < RSR_MAXSIZE; ++i) {
+				if (this->rsr[i] == itr.Source()) {
+					for (; i < RSR_MAXSIZE - 1; ++i) {
+						this->rsr[i] = this->rsr[i + 1];
+					}
+					break;
+				}
+			}
 			this->alloc.Free(itr.Source(), 1);
 		}
 
@@ -364,6 +399,14 @@ namespace dsl {
 			if (x->fa) x->fa->ch[this->operator()(x->fa, x)] = tmp;
 			else this->root = tmp;
 			--this->size;
+			for (int i = 0; i < RSR_MAXSIZE; ++i) {
+				if (this->rsr[i] == x) {
+					for (; i < RSR_MAXSIZE - 1; ++i) {
+						this->rsr[i] = this->rsr[i + 1];
+					}
+					break;
+				}
+			}
 			this->alloc.Free(x, 1);
 			return true;
 		}
@@ -378,5 +421,7 @@ namespace dsl {
 		_Node* root = this->alloc.New(1);
 		_Node* sentry = this->root;
 		size_t size = 0;
+		// rising sharply recently 
+		_Node* rsr[RSR_MAXSIZE]{};
 	};
 }

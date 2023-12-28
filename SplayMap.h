@@ -56,7 +56,7 @@ namespace dsl {
 		std::pair<_KTy, _Value> data;
 	};
 
-	template<typename _Key, typename _Value, typename _Cmpr = std::less<_Value>, template<typename> typename _Alloc = dsl::RecycleAllocator>
+	template<typename _Key, typename _Value, typename _Cmpr = std::less<_Key>, template<typename> typename _Alloc = Allocator>
 	class SplayMap
 		: public SplayTree<SplayMapNode<_Key, _Value>, _Cmpr, _Alloc<SplayMapNode<_Key, _Value>>>
 	{
