@@ -59,8 +59,25 @@ namespace dsl {
 		// idx represents which child it is
 		// if idx = -1, the same node exists
 		_Node* Locate(_Node* v, int& idx) {
-			_Node* u = this->root, * pre = u;
-			idx = 0;
+			_Node* u = this->root, * pre = nullptr;
+			while (u) {
+				idx = this->operator()(u, v);
+				if (idx == this->operator()(v, u)) {
+					idx = -1;
+					return u;
+				}
+				pre = u;
+				u = u->ch[idx];
+			}
+			return pre;
+		}
+
+		// get insertion position
+		// return the leaf precursor
+		// idx represents which child it is
+		// if idx = -1, the same node exists
+		_Node* Locate(const _KTy& v, int& idx) {
+			_Node* u = this->root, * pre = nullptr;
 			while (u) {
 				idx = this->operator()(u, v);
 				if (idx == this->operator()(v, u)) {
@@ -248,22 +265,10 @@ namespace dsl {
 				}
 			}
 
-			u = this->root;
-			bool idx;
-			while (true) {
-				idx = this->operator()(u, key);
-				if (idx == this->operator()(key, u)) {
-					this->Splay(u);
-					return { u, this };
-				}
-				if (!u->ch[idx]) {
-					this->Splay(u);
-					return { this->sentry, this };
-				}
-				u = u->ch[idx];
-			}
+			int idx;
+			u = this->Locate(key, idx);
 			this->Splay(u);
-			return { u, this };
+			return { idx < 0 ? u : sentry, this };
 		}
 
 		// precursor of key
@@ -383,6 +388,7 @@ namespace dsl {
 				}
 			}
 			this->alloc.Free(itr.Source(), 1);
+			this->Splay(tmp);
 		}
 
 		bool Erase(const _KTy& key) {
@@ -396,8 +402,9 @@ namespace dsl {
 				}
 			}
 			if (!x) {
-				x = this->Find(key).Source();
-				if (x == this->sentry) return false;
+				int idx;
+				x = this->Locate(key, idx);
+				if (idx >= 0) return false;
 			}
 			_Node* tmp = this->Combine(x->ch[0], x->ch[1]);
 			if (tmp) tmp->fa = x->fa;
@@ -405,6 +412,7 @@ namespace dsl {
 			else this->root = tmp;
 			--this->size;
 			this->alloc.Free(x, 1);
+			this->Splay(tmp);
 			return true;
 		}
 
