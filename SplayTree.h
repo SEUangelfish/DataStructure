@@ -376,10 +376,13 @@ namespace dsl {
 			if (itr.Source() == this->sentry) throw std::exception("object of SplayTree£ºinvalid iterator by Erase()");
 #endif // EXCEPTION_DETECTION
 			_Node* tmp = this->Combine(itr->ch[0], itr->ch[1]);
-			if (tmp) tmp->fa = itr->fa;
 			if (itr->fa) itr->fa->ch[this->operator()(itr->fa, itr.Source())] = tmp;
 			else this->root = tmp;
 			--this->size;
+			if (tmp) {
+				tmp->fa = itr->fa;
+				this->Splay(tmp);
+			}
 			for (int i = 0; i < RSR_MAXSIZE; ++i) {
 				if (this->rsr[i] == itr.Source()) {
 					for (; i < RSR_MAXSIZE - 1 && this->rsr[i + 1]; ++i) this->rsr[i] = this->rsr[i + 1];
@@ -388,7 +391,6 @@ namespace dsl {
 				}
 			}
 			this->alloc.Free(itr.Source(), 1);
-			this->Splay(tmp);
 		}
 
 		bool Erase(const _KTy& key) {
@@ -407,12 +409,14 @@ namespace dsl {
 				if (idx >= 0) return false;
 			}
 			_Node* tmp = this->Combine(x->ch[0], x->ch[1]);
-			if (tmp) tmp->fa = x->fa;
 			if (x->fa) x->fa->ch[this->operator()(x->fa, x)] = tmp;
 			else this->root = tmp;
 			--this->size;
+			if (tmp) {
+				tmp->fa = x->fa;
+				this->Splay(tmp);
+			}
 			this->alloc.Free(x, 1);
-			this->Splay(tmp);
 			return true;
 		}
 
