@@ -152,7 +152,7 @@ namespace dsl {
 			std::copy_n(cp.src, cp.size, this->src);
 		}
 		IntervalHeap(IntervalHeap&& mv) noexcept :cpr(std::move(mv.cpr)), alloc(std::move(mv.alloc)), src(mv.src), size(mv.size), capacity(mv.capacity) {
-			memset(&mv, 0, sizeof(IntervalHeap));
+			mv.src = mv.size = mv.capacity = NULL;
 		}
 		template<typename _Init>
 		IntervalHeap(_Init st, _Init ed) {
