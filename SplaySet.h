@@ -85,7 +85,7 @@ namespace dsl {
 			return *this;
 		}
 
-		virtual ~SplaySet() = default;
+		~SplaySet() = default;
 
 		// the same as Begin()
 		// adapts to C++'s range-based for loops

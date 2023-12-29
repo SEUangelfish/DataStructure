@@ -90,7 +90,7 @@ namespace dsl {
 			return *this;
 		}
 
-		virtual ~SplayMap() = default;
+		~SplayMap() = default;
 
 		_VTy& operator[](const _KTy& key) {
 			return this->Emplace(key).first->second;
