@@ -133,7 +133,7 @@ namespace dsl {
 		SplayTree(SplayTree&& mv) noexcept :alloc(std::move(mv.alloc)), cpr(std::move(mv.cpr)), root(mv.root), sentry(mv.sentry), size(mv.size) {
 			mv.root = mv.sentry = mv.size = NULL;
 			std::copy_n(mv.rsr, RSR_MAXSIZE, this->rsr);
-			memset(mv.rsr, 0, sizeof(mv.rsr));
+			std::fill_n(mv.rsr, RSR_MAXSIZE, 0);
 		}
 
 
@@ -230,8 +230,7 @@ namespace dsl {
 			this->root = this->sentry;
 			this->root->fa = this->root->ch[0] = nullptr;
 			this->size = 0;
-			memset(this->rsr, 0, sizeof(this->rsr));
-
+			std::fill_n(this->rsr, RSR_MAXSIZE, 0);
 		}
 
 		size_t Size() { return this->size; }
@@ -427,7 +426,7 @@ namespace dsl {
 	protected:
 		_ElemAlloc alloc;
 		_Cmpr cpr;
-		_Node* root = this->alloc.New(1);
+		_Node* root = this->alloc.New0(1);
 		_Node* sentry = this->root;
 		size_t size = 0;
 		// rising sharply recently 
