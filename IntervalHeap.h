@@ -314,7 +314,7 @@ namespace dsl {
 			_Ty* buf = this->alloc.New(cap);
 
 			if (this->src) {
-				memcpy(buf, this->src, std::min(cap, this->size) * sizeof(_Ty));
+				std::copy_n(this->src, std::min(cap, this->size), buf);
 				this->alloc.Free(this->src, 0);
 			}
 			this->src = buf;

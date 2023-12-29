@@ -19,12 +19,33 @@ namespace dsl {
 		// cnt: number of elements
 		// return: heap resourse pointer of type _Ty
 		virtual _Ty* New(size_t cnt) {
-			_Ty* res = (_Ty*)operator new(cnt * sizeof(_Ty));
+			_Ty* mem = (_Ty*)operator new(cnt * sizeof(_Ty));
 #ifdef EXCEPTION_DETECTION
-			if (!res) throw std::bad_alloc();
+			if (!mem) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
-			memset(res, 0, sizeof(_Ty) * cnt);
-			return res;
+			return mem;
+		}
+
+		// resources request function
+		// cnt: number of elements
+		// init: initialization parameter
+		// return: heap resourse pointer of type _Ty
+		template<typename... _Args>
+		_Ty* New(size_t cnt, _Args&&... init) {
+			_Ty* mem = this->New(cnt);
+			if constexpr (std::is_class<_Ty>::value) for (size_t i = 0; i < cnt; ++i) new (&mem[i]) _Ty(std::forward<_Args>(init)...);
+			else std::fill_n(mem, cnt, init...);
+			return mem;
+		}
+
+		// resources request function
+		// set the memory to zero
+		// cnt: number of elements
+		// return: heap resourse pointer of type _Ty
+		_Ty* New0(size_t cnt) {
+			_Ty* mem = this->New(cnt);
+			memset(mem, 0, cnt * sizeof(_Ty));
+			return mem;
 		}
 
 		// release resources
@@ -46,7 +67,7 @@ namespace dsl {
 	class RecycleAllocator : public Allocator<_Ty> {
 		union Block {
 			_Ty null;
-			struct{
+			struct {
 				int cnt;
 				Block* next;
 			}link;
@@ -92,7 +113,6 @@ namespace dsl {
 				if (cnt <= cur->link.cnt) {
 					if (pre) pre->link.next = cur->link.next;
 					else this->head = cur->link.next;
-					memset(cur, 0, sizeof(_Ty) * cnt);
 					return (_Ty*)cur;
 				}
 				pre = cur;
@@ -103,8 +123,16 @@ namespace dsl {
 #ifdef EXCEPTION_DETECTION
 			if (!res) throw std::bad_alloc();
 #endif // EXCEPTION_DETECTION
-			memset(res, 0, sizeof(_Ty) * cnt);
 			return res;
+		}
+
+		// resources request function
+		// cnt: number of elements
+		// init: initialization parameter
+		// return: heap resourse pointer of type _Ty
+		template<typename... _Args>
+		_Ty* New(size_t cnt, _Args&&... init) {
+			return Allocator<_Ty>::New(cnt, std::forward<_Args>(init)...);
 		}
 
 		// release resources
