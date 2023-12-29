@@ -21,11 +21,6 @@ namespace dsl {
 		using Iterator = SplayTreeIterator<SplayTree<_Node, _Cmpr, _ElemAlloc>>;
 
 	protected:
-		// expansion interface
-		virtual void PushUp(_Node* x) {}
-		// expansion interface
-		virtual void PushDown(_Node* x) {}
-
 		// zigzag
 		void Rotate(_Node* x) {
 			_Node* y = x->fa, * z = y->fa;
@@ -36,8 +31,6 @@ namespace dsl {
 			x->ch[!idx] = y;
 			x->fa = z;
 			if (z) z->ch[z->ch[1] == y] = x;
-			PushUp(y);
-			PushUp(x);
 		}
 
 		// merge left and right subtrees
@@ -58,8 +51,43 @@ namespace dsl {
 
 			left->ch[1] = right;
 			right->fa = left;
-			this->PushUp(left);
 			return left;
+		}
+
+		// get insertion position
+		// return the leaf precursor
+		// idx represents which child it is
+		// if idx = -1, the same node exists
+		_Node* Locate(_Node* v, int& idx) {
+			_Node* u = this->root, * pre = nullptr;
+			while (u) {
+				idx = this->operator()(u, v);
+				if (idx == this->operator()(v, u)) {
+					idx = -1;
+					return u;
+				}
+				pre = u;
+				u = u->ch[idx];
+			}
+			return pre;
+		}
+
+		// get insertion position
+		// return the leaf precursor
+		// idx represents which child it is
+		// if idx = -1, the same node exists
+		_Node* Locate(const _KTy& v, int& idx) {
+			_Node* u = this->root, * pre = nullptr;
+			while (u) {
+				idx = this->operator()(u, v);
+				if (idx == this->operator()(v, u)) {
+					idx = -1;
+					return u;
+				}
+				pre = u;
+				u = u->ch[idx];
+			}
+			return pre;
 		}
 
 	public:
@@ -80,7 +108,7 @@ namespace dsl {
 				top = top->ch[1];
 				mould = u->ch[0];
 				if (mould == cp.sentry) this->sentry = u;
-				else u->Key() = mould->Key();
+				else u->Data() = mould->Data();
 
 				for (int i = 0; i < 2; ++i) {
 					if (mould->ch[i]) {
@@ -121,7 +149,7 @@ namespace dsl {
 			return *this;
 		}
 
-		virtual ~SplayTree() {
+		~SplayTree() {
 			if (!this->root) return;
 
 			_Node* head = this->root, * tail = this->root;
@@ -134,12 +162,13 @@ namespace dsl {
 				if (head == tail) break;
 				head = this->root;
 			};
+
 		}
 
-		// rotate x to the depth DEPTH_THRESHOULD
+		// rotate x up
 		void Splay(_Node* x) {
 #ifdef EXCEPTION_DETECTION
-			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x, ancestor)");
+			if (!x) throw std::exception("subclass object of SplayTree: nullptr x by Spaly(x)");
 #endif // EXCEPTION_DETECTION
 
 			_Node* fast = x;
@@ -150,33 +179,24 @@ namespace dsl {
 
 			int step = 0;
 			while (true) {
-				fast = fast->fa;
-				if (!fast) break;
-				fast = fast->fa;
-				if (!fast) break;
-
+				if (!fast->fa || !fast->fa->fa) break;
+				fast = fast->fa->fa;
 				_Node* y = x->fa, * z = y->fa;
 				if ((x == y->ch[1]) == (y == z->ch[1])) this->Rotate(y);
 				else this->Rotate(x);
 				++step;
 
-				fast = fast->fa;
-				if (!fast) break;
-				fast = fast->fa;
-				if (!fast) break;
+				if (!fast->fa || !fast->fa->fa) break;
+				fast = fast->fa->fa;
 				this->Rotate(x);
 				++step;
 			}
 			if (step > RSR_STEP_THRESHOULD) {
 				int i = 0;
-				for (; i < RSR_MAXSIZE && this->rsr[i] != x; ++i);
-				if (i == RSR_MAXSIZE) --i;
+				for (; i < RSR_MAXSIZE - 1 && this->rsr[i] != x; ++i);
 				for (; i > 0; --i) this->rsr[i] = this->rsr[i - 1];
 				this->rsr[0] = x;
 			}
-
-
-
 		}
 
 		// node comparison operator
@@ -211,6 +231,7 @@ namespace dsl {
 			this->root->fa = this->root->ch[0] = nullptr;
 			this->size = 0;
 			memset(this->rsr, 0, sizeof(this->rsr));
+
 		}
 
 		size_t Size() { return this->size; }
@@ -244,22 +265,10 @@ namespace dsl {
 				}
 			}
 
-			u = this->root;
-			bool idx;
-			while (true) {
-				idx = this->operator()(u, key);
-				if (idx == this->operator()(key, u)) {
-					this->Splay(u);
-					return { u, this };
-				}
-				if (!u->ch[idx]) {
-					this->Splay(u);
-					return { this->sentry, this };
-				}
-				u = u->ch[idx];
-			}
+			int idx;
+			u = this->Locate(key, idx);
 			this->Splay(u);
-			return { u, this };
+			return { idx < 0 ? u : sentry, this };
 		}
 
 		// precursor of key
@@ -348,22 +357,13 @@ namespace dsl {
 		// if fail, the first parameter is the iterator of conflicting node
 		template<typename... _Args>
 		std::pair<Iterator, bool> Emplace(_Args&&... args) {
-			_Node* u = this->root, * pre = u, * v = this->alloc.New(1);
+			_Node* v = this->alloc.New(1);
+			int idx;
 
 			new (v) _Node(std::forward<_Args>(args)...);
+			_Node* pre = this->Locate(v, idx);
 
-			bool idx = 0;
-			while (u) {
-				idx = this->operator()(u, v);
-				if (idx == this->operator()(v, u)) {
-					this->alloc.Free(v, 1);
-					this->Splay(u);
-					return std::make_pair(Iterator(u, this), false);
-				}
-				pre = u;
-				u = u->ch[idx];
-			}
-
+			if (idx < 0) return std::make_pair(Iterator(pre, this), false);
 			pre->ch[idx] = v;
 			v->fa = pre;
 			this->Splay(v);
@@ -382,32 +382,37 @@ namespace dsl {
 			--this->size;
 			for (int i = 0; i < RSR_MAXSIZE; ++i) {
 				if (this->rsr[i] == itr.Source()) {
-					for (; i < RSR_MAXSIZE - 1; ++i) {
-						this->rsr[i] = this->rsr[i + 1];
-					}
+					for (; i < RSR_MAXSIZE - 1 && this->rsr[i + 1]; ++i) this->rsr[i] = this->rsr[i + 1];
+					this->rsr[i] = nullptr;
 					break;
 				}
 			}
 			this->alloc.Free(itr.Source(), 1);
+			this->Splay(tmp);
 		}
 
 		bool Erase(const _KTy& key) {
-			_Node* x = this->Find(key).Source();
-			if (x == this->sentry) return false;
+			_Node* x = nullptr;
+			for (int i = 0; i < RSR_MAXSIZE && this->rsr[i]; ++i) {
+				if (this->operator()(this->rsr[i], key) == this->operator()(key, this->rsr[i])) {
+					x = this->rsr[i];
+					for (; i < RSR_MAXSIZE - 1 && this->rsr[i + 1]; ++i) this->rsr[i] = this->rsr[i + 1];
+					this->rsr[i] = nullptr;
+					break;
+				}
+			}
+			if (!x) {
+				int idx;
+				x = this->Locate(key, idx);
+				if (idx >= 0) return false;
+			}
 			_Node* tmp = this->Combine(x->ch[0], x->ch[1]);
 			if (tmp) tmp->fa = x->fa;
 			if (x->fa) x->fa->ch[this->operator()(x->fa, x)] = tmp;
 			else this->root = tmp;
 			--this->size;
-			for (int i = 0; i < RSR_MAXSIZE; ++i) {
-				if (this->rsr[i] == x) {
-					for (; i < RSR_MAXSIZE - 1; ++i) {
-						this->rsr[i] = this->rsr[i + 1];
-					}
-					break;
-				}
-			}
 			this->alloc.Free(x, 1);
+			this->Splay(tmp);
 			return true;
 		}
 
