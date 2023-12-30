@@ -87,19 +87,5 @@ namespace dsl {
 
 		~SplaySet() = default;
 
-		// the same as Begin()
-		// adapts to C++'s range-based for loops
-		Iterator begin() {
-			return this->Begin();
-		}
-		// the same as End()
-		// adapts to C++'s range-based for loops
-		Iterator end() {
-			return this->End();
-		}
-		// the same as Successor()
-		Iterator UpperBound(const _KTy& key) {
-			return this->Successor(key);
-		}
 	};
 }

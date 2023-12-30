@@ -247,8 +247,20 @@ namespace dsl {
 			return { u, this };
 		}
 
+		// the same as Begin()
+		// adapts to C++'s range-based for loops
+		Iterator begin() {
+			return this->Begin();
+		}
+
 		Iterator End() {
 			return { this->sentry, this };
+		}
+
+		// the same as End()
+		// adapts to C++'s range-based for loops
+		Iterator end() {
+			return this->End();
 		}
 
 		// find node by key
@@ -313,7 +325,7 @@ namespace dsl {
 
 		// return the first node >= key
 		// return End() if such node do not exist 
-		Iterator LowerBound(const _KTy& key) {
+		Iterator lower_bound(const _KTy& key) {
 			_Node* suc = nullptr, * u = this->root;
 			bool idx;
 			while (u) {
@@ -330,6 +342,11 @@ namespace dsl {
 			}
 			this->Splay(suc);
 			return { suc, this };
+		}
+
+		// the same as Successor()
+		Iterator upper_bound(const _KTy& key) {
+			return this->Successor(key);
 		}
 
 		std::pair<Iterator, bool> Insert(const _DataType& data) {
