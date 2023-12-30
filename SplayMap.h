@@ -56,6 +56,10 @@ namespace dsl {
 		std::pair<_KTy, _Value> data;
 	};
 
+	// _Key			key type
+	// _Value		value type
+	// _Cmpr		comparator type of key
+	// _Alloc		allocator template
 	template<typename _Key, typename _Value, typename _Cmpr = std::less<_Key>, template<typename> typename _Alloc = Allocator>
 	class SplayMap
 		: public SplayTree<SplayMapNode<_Key, _Value>, _Cmpr, _Alloc<SplayMapNode<_Key, _Value>>>
@@ -96,19 +100,5 @@ namespace dsl {
 			return this->Emplace(key).first->second;
 		}
 
-		// the same as Begin()
-		// adapts to C++'s range-based for loops
-		Iterator begin() {
-			return this->Begin();
-		}
-		// the same as End()
-		// adapts to C++'s range-based for loops
-		Iterator end() {
-			return this->End();
-		}
-		// the same as Successor()
-		Iterator UpperBound(const _KTy& key) {
-			return this->Successor(key);
-		}
 	};
 }
