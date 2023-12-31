@@ -113,39 +113,43 @@ namespace dsl {
 				--this->root->Words();
 				return;
 			}
-			size_t idx1 = this->map(word[0]), idx2, i = 0;
-			_Node* pre = this->root, * cur = (*pre)[idx1], * nxt;
-			do {
+			_Node* pre, * cur = this->root;
+			for (size_t i = 0, idx; i < length;) {
+				pre = cur;
+				idx = this->map(word[i++]);
+				cur = (*cur)[idx];
 				if (!--cur->Prefix()) {
-					(*pre)[idx1] = nullptr;
-					while (cur) {
+					(*pre)[idx] = nullptr;
+					while (i < length) {
 						pre = cur;
-						cur = (*cur)[this->map(word[++i])];
+						cur = (*cur)[this->map(word[i++])];
 						this->alloc.Free(pre, 1);
 					}
+					this->alloc.Free(cur, 1);
 					return;
 				}
-				idx2 = this->map(word[++i]);
-				nxt = (*cur)[idx2];
-				pre = cur;
-				cur = nxt;
-				idx1 = idx2;
-			} while (i < length);
+			}
 			--cur->Words();
 		}
 
 		// remove all words with prefix of parameter 1
-		void Remove(const _Ty* prefix, size_t length) {
-			_Node* u = this->root;
-			size_t idx;
-			for (size_t i = 0; i < length; ++i) {
+		//void Remove(const _Ty* prefix, size_t length) {
+		//	_Node* u = this->root;
+		//	size_t idx;
+		//	for (size_t i = 0; i < length; ++i) {
 
-			}
-		}
+		//	}
+		//}
 
 		// return number of words
 		size_t Size() {
 			return this->root->Prefix();
+		}
+
+		size_t CountWordsWithPrefix(const _Ty* prefix, size_t length) {
+			_Node* u = this->root;
+			for (size_t i = 0; i < length && u; ++i) u = (*u)[this->map(prefix[i])];
+			return u ? u->Prefix() : 0;
 		}
 
 	protected:
@@ -154,8 +158,6 @@ namespace dsl {
 		_Node* root = this->alloc.New0(1);
 
 		//bool startsWithPrefix(string prefix);
-		//int countWordsWithPrefix(string prefix);
 		//void traverse();
-		//void clear();
 	};
 }
