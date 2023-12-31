@@ -45,26 +45,55 @@ namespace dsl {
 		Trie(_Map _map) :map(_map) {}
 
 		~Trie() {
-
+			this->Clear();
+			this->alloc.Free(this->root, 1);
 		}
 
+		// remove all the words from the trie
+		void Clear() {
+			_Node* u = this->root, * head = nullptr;
+			for (size_t i = 0; i < range; ++i) {
+				if ((*u)[i]) {
+					(*u)[i]->Words() = (size_t)head;
+					head = (*u)[i];
+					(*u)[i] = nullptr;
+				}
+			}
+			u->Words() = u->Prefix() = 0;
+			while (head) {
+				u = head;
+				head = (_Node*)head->Words();
+				for (size_t i = 0; i < range; ++i) {
+					if ((*u)[i]) {
+						(*u)[i]->Words() = (size_t)head;
+						head = (*u)[i];
+						(*u)[i] = nullptr;
+					}
+				}
+				this->alloc.Free(u, 1);
+			}
+		}
+
+		// insert a word into the trie including null string 
 		void Insert(const _Ty* word, size_t length) {
 			_Node* u = this->root;
 			size_t idx;
 			for (size_t i = 0; i < length; ++i) {
+				++u->Prefix();
 				idx = this->map(word[i]);
 				if ((*u)[idx] == nullptr) {
 					(*u)[idx] = this->alloc.New(1);
 					u = (*u)[idx];
-					new (u) _Node(1);
+					new (u) _Node();
 				}
 				else u = (*u)[idx];
 			}
-			u->Words() = 1;
-			++this->size;
+			++u->Prefix();
+			++u->Words();
 		}
 
 		bool Contains(const _Ty* word, size_t length) {
+			if (!length) return this->root->Words();
 			_Node* u = this->root;
 			size_t idx;
 			for (size_t i = 0; i < length; ++i) {
@@ -78,43 +107,50 @@ namespace dsl {
 		// remove the word from trie
 		// ensure: true if it must contains the word
 		void Remove(const _Ty* word, size_t length, bool ensure) {
-			if (!length || !ensure && !this->Contains(word, length)) return;
-			size_t idx1 = this->map(word[0]), idx2, i = 1;
+			if (!ensure && !this->Contains(word, length)) return;
+			--this->root->Prefix();
+			if (!length) {
+				--this->root->Words();
+				return;
+			}
+			size_t idx1 = this->map(word[0]), idx2, i = 0;
 			_Node* pre = this->root, * cur = (*pre)[idx1], * nxt;
 			do {
 				if (!--cur->Prefix()) {
 					(*pre)[idx1] = nullptr;
 					while (cur) {
 						pre = cur;
-						cur = (*cur)[this->map(word[i++])];
+						cur = (*cur)[this->map(word[++i])];
 						this->alloc.Free(pre, 1);
 					}
-					--this->size;
 					return;
 				}
-				idx2 = this->map(word[i]);
+				idx2 = this->map(word[++i]);
 				nxt = (*cur)[idx2];
 				pre = cur;
 				cur = nxt;
 				idx1 = idx2;
-			} while (++i < length);
+			} while (i < length);
 			--cur->Words();
-			--this->size;
 		}
 
-		void Remove() {
+		// remove all words with prefix of parameter 1
+		void Remove(const _Ty* prefix, size_t length) {
+			_Node* u = this->root;
+			size_t idx;
+			for (size_t i = 0; i < length; ++i) {
 
+			}
 		}
 
 		// return number of words
 		size_t Size() {
-			return this->size;
+			return this->root->Prefix();
 		}
 
 	protected:
 		_ElemAlloc alloc;
 		_Map map = [](const _Ty& x)->size_t { return x % 26; };
-		size_t size = 0;
 		_Node* root = this->alloc.New0(1);
 
 		//bool startsWithPrefix(string prefix);
