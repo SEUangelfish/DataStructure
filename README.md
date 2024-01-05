@@ -1,5 +1,5 @@
 # DataStructureLibrary
-this warehouse contains some useful data structures unavailable in STL. All of them are implemented by C++ generic programming. 
+this warehouse contains some useful data structures unavailable in STL.
 
 below are data structures which have been implemented and tested for availability: 
 1. IntervalHeap  # As an extension of the priority_queue, it can query both maximum and minimum in O(logn).
