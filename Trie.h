@@ -31,7 +31,7 @@ namespace dsl {
 	// range:	character range
 	// _Ty:		character type
 	// _Map:	type of mapping function which maps characters to different indexes
-	//			eg: to all lowercase letters, the function should be "mod 26" 
+	//			eg: to all lowercase letters, the function can be "mod 26" or "- 'a'" 
 	// _Alloc:	allocator template
 	template <size_t range = 26, typename _Ty = char, typename _Map = std::function<size_t(const _Ty&)>, template<typename> typename _Alloc = Allocator>
 	class Trie {
@@ -60,11 +60,58 @@ namespace dsl {
 
 	public:
 		Trie() = default;
-		Trie(_Map _map) :map(_map) {}
+		explicit Trie(const _Map& _map) :map(_map) {}
+		explicit Trie(const _ElemAlloc& _alloc) :alloc(_alloc) {}
+		explicit Trie(_Map&& _map) :map(std::move(_map)) {}
+		explicit Trie(_ElemAlloc&& _alloc) :alloc(std::move(_alloc)) {}
+		Trie(const _Map& _map, const _ElemAlloc& _alloc) :map(_map), alloc(_alloc) {}
+		Trie(const _Map& _map, _ElemAlloc&& _alloc) :map(_map), alloc(std::move(_alloc)) {}
+		Trie(_Map&& _map, const _ElemAlloc& _alloc) :map(std::move(_map)), alloc(_alloc) {}
+		Trie(_Map&& _map, _ElemAlloc&& _alloc) :map(std::move(_map)), alloc(std::move(_alloc)) {}
+
+		Trie(const Trie& cp) :map(cp.map), alloc(cp.alloc) {
+			this->root->Prefix() = (size_t)cp.root;
+			_Node* mould, * tail = this->root, * cur = this->root, * nxt;
+			while (cur) {
+				mould = (_Node*)cur->Prefix();
+				cur->Prefix() = mould->Prefix();
+
+				for (size_t i = 0; i < range; ++i) {
+					if ((*mould)[i]) {
+						(*cur)[i] = this->alloc.New0(1);
+						tail->Words() = (size_t)(*cur)[i];
+						tail = (*cur)[i];
+						tail->Prefix() = (size_t)(*mould)[i];
+					}
+				}
+
+				nxt = (_Node*)cur->Words();
+				cur->Words() = mould->Words();
+				cur = nxt;
+			}
+		}
+
+		Trie(Trie&& mv) noexcept :root(mv.root), map(std::move(mv.map)), alloc(std::move(mv.alloc)) {
+			mv.root = nullptr;
+		}
+
+		Trie& operator=(Trie&& mv) noexcept {
+			this->~Trie();
+			new (this) Trie(std::move(mv));
+			return *this;
+		}
+
+		Trie& operator=(const Trie& mv) noexcept {
+			this->~Trie();
+			new (this) Trie(mv);
+			return *this;
+		}
 
 		~Trie() {
-			this->Clear();
-			this->alloc.Free(this->root, 1);
+			if (this->root) {
+				this->Clear();
+				this->alloc.Free(this->root, 1);
+			}
 		}
 
 		// remove all words from trie including null string 
